@@ -164,7 +164,9 @@ class PropertyValue extends StatelessWidget {
                     firstDate: DateTime(1970),
                     lastDate: DateTime(2050),
                   );
-                  onUpdate?.call(newDate?.microsecondsSinceEpoch);
+                  if (newDate != null) {
+                    onUpdate?.call(newDate.microsecondsSinceEpoch);
+                  }
                 },
           child: Text(
             date?.toIso8601String() ?? 'null',
