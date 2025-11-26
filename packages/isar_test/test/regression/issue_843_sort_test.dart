@@ -25,6 +25,9 @@ void main() {
       ]);
     });
 
+    // Ascending sort should remain untouched.
+    await qEqual(col.where(sort: Sort.asc).idProperty(), [1, 2, 3]);
+
     await qEqual(col.where(sort: Sort.desc).idProperty(), [3, 2, 1]);
 
     await qEqual(
@@ -34,6 +37,22 @@ void main() {
           .valueGreaterThan(1)
           .idProperty(),
       [3, 2],
+    );
+
+    // Explicit where clauses must behave the same as before the fallback logic.
+    await qEqual(
+      col.where(sort: Sort.desc).idGreaterThan(1).idProperty(),
+      [3, 2],
+    );
+
+    await qEqual(
+      col.where(sort: Sort.asc).idGreaterThan(1).idProperty(),
+      [2, 3],
+    );
+
+    await qEqual(
+      col.where(sort: Sort.desc).valueEqualTo(2).idProperty(),
+      [2],
     );
   });
 }
