@@ -51,7 +51,21 @@ void main() {
     );
 
     await qEqual(
-      col.where(sort: Sort.desc).valueEqualTo(2).idProperty(),
+      col.where(sort: Sort.desc).filter().valueEqualTo(2).idProperty(),
+      [2],
+    );
+
+    await qEqual(
+      col.where(sort: Sort.desc).offset(1).limit(1).idProperty(),
+      [2],
+    );
+
+    await qEqual(
+      col
+          .where(sort: Sort.desc)
+          .filter()
+          .valueBetween(1, 3, includeLower: false, includeUpper: false)
+          .idProperty(),
       [2],
     );
   });
