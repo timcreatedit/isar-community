@@ -1,7 +1,7 @@
 #!/bin/bash
 
 version=`dart packages/isar_community/tool/get_version.dart`
-binariesUrl="https://binaries.isar-community.dev/3.3.2"
+binariesUrl="https://binaries.isar-community.dev/$ISAR_VERSION"
 
 
 curl "${binariesUrl}/libisar_android_arm64.so" -o packages/isar_community_flutter_libs/android/src/main/jniLibs/arm64-v8a/libisar.so --create-dirs -L -f
