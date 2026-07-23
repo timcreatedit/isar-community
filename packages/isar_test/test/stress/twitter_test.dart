@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -26,6 +26,7 @@ import 'package:test/test.dart';
 // }
 
 void main() async {
+  if (skipIfUnsupported(BackendCapability.filesystem)) return;
   const skipStressTest = true;
   group(
     'Twitter Stress',
