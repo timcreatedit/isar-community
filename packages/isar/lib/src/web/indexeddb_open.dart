@@ -30,8 +30,9 @@ Future<Isar> openIsar({
   var handedOff = false;
   try {
     database = await _openDatabase(name, schemas);
-    final expectedSchema =
-        jsonEncode(schemas.map((schema) => schema.toJson()).toList());
+    final expectedSchema = jsonEncode(
+      schemas.map((schema) => schema.toJson()).toList(),
+    );
     final storedSchema = await _readString(database, _metaStore, _schemaKey);
     if (storedSchema != null &&
         !_schemasCompatible(storedSchema, expectedSchema)) {
@@ -40,7 +41,8 @@ Future<Isar> openIsar({
       );
     }
 
-    var revision = int.tryParse(
+    var revision =
+        int.tryParse(
           await _readString(database, _metaStore, _revisionKey) ?? '',
         ) ??
         0;
@@ -85,8 +87,15 @@ Future<Isar> openIsar({
       },
       onClose: (deleteFromDisk) async {
         ownedDatabase.close();
-        lease.close();
-        if (deleteFromDisk) await _deleteDatabase(name);
+        if (deleteFromDisk) {
+          try {
+            await _deleteDatabase(name);
+          } finally {
+            lease.close();
+          }
+        } else {
+          lease.close();
+        }
       },
     );
   } finally {
@@ -109,20 +118,24 @@ Isar openIsarSync({
 }
 
 List<String> _stores(List<CollectionSchema<dynamic>> schemas) => [
-      _metaStore,
-      _linksStore,
-      _countersStore,
-      for (final schema in schemas) _collectionStore(schema.name),
-    ];
+  _metaStore,
+  _linksStore,
+  _countersStore,
+  for (final schema in schemas) _collectionStore(schema.name),
+];
 
 Future<IDBDatabase> _openDatabase(
   String name,
   List<CollectionSchema<dynamic>> schemas,
 ) async {
   var database = await _openRequest(name, null, schemas);
-  final missing = _stores(schemas)
-      .where((store) => !database.objectStoreNames.contains(store));
-  if (missing.isEmpty) return database;
+  final desired = _stores(schemas).toSet();
+  final actual = _objectStoreNames(database);
+  final missing = desired.difference(actual);
+  final obsolete = actual.where(
+    (store) => store.startsWith('collection:') && !desired.contains(store),
+  );
+  if (missing.isEmpty && obsolete.isEmpty) return database;
   final version = database.version + 1;
   database.close();
   database = await _openRequest(name, version, schemas);
@@ -140,9 +153,15 @@ Future<IDBDatabase> _openRequest(
       : window.indexedDB.open('isar-$name', version);
   request.onupgradeneeded = ((Event event) {
     final database = request.result as IDBDatabase;
-    for (final store in _stores(schemas)) {
+    final desired = _stores(schemas).toSet();
+    for (final store in desired) {
       if (!database.objectStoreNames.contains(store)) {
         database.createObjectStore(store);
+      }
+    }
+    for (final store in _objectStoreNames(database)) {
+      if (store.startsWith('collection:') && !desired.contains(store)) {
+        database.deleteObjectStore(store);
       }
     }
   }).toJS;
@@ -168,6 +187,11 @@ Future<IDBDatabase> _openRequest(
   return completer.future;
 }
 
+Set<String> _objectStoreNames(IDBDatabase database) => {
+  for (var i = 0; i < database.objectStoreNames.length; i++)
+    if (database.objectStoreNames.item(i) case final String name) name,
+};
+
 Future<EngineState?> _readState(
   IDBDatabase database,
   List<CollectionSchema<dynamic>> schemas,
@@ -175,8 +199,10 @@ Future<EngineState?> _readState(
   final state = <String, Map<Id, Map<Object, dynamic>>>{};
   var found = false;
   for (final schema in schemas) {
-    final values =
-        await _readAllStrings(database, _collectionStore(schema.name));
+    final values = await _readAllStrings(
+      database,
+      _collectionStore(schema.name),
+    );
     final records = <Id, Map<Object, dynamic>>{};
     for (final value in values) {
       final record = jsonDecode(value) as Map<String, dynamic>;
@@ -188,8 +214,8 @@ Future<EngineState?> _readState(
   }
   for (final value in await _readAllStrings(database, _linksStore)) {
     final record = jsonDecode(value) as Map<String, dynamic>;
-    state.putIfAbsent(
-            record['store'] as String, () => {})[record['id'] as int] =
+    state.putIfAbsent(record['store'] as String, () => {})[record['id']
+            as int] =
         _integerKeys(record['data']) as Map<Object, dynamic>;
     found = true;
   }
@@ -264,10 +290,7 @@ Future<void> _writeState(
   counters.clear();
   for (final record in (state['@counters'] ?? const {}).entries) {
     counters.put(
-      jsonEncode({
-        'id': record.key,
-        'data': _stringifyKeys(record.value),
-      }).toJS,
+      jsonEncode({'id': record.key, 'data': _stringifyKeys(record.value)}).toJS,
       record.key.toString().toJS,
     );
   }
@@ -282,8 +305,9 @@ Future<String?> _readString(
   String key,
 ) async {
   final transaction = database.transaction(storeName.toJS, 'readonly');
-  final result =
-      await _request(transaction.objectStore(storeName).get(key.toJS));
+  final result = await _request(
+    transaction.objectStore(storeName).get(key.toJS),
+  );
   return result == null ? null : (result as JSString).toDart;
 }
 
@@ -294,8 +318,7 @@ Future<List<String>> _readAllStrings(
   final transaction = database.transaction(storeName.toJS, 'readonly');
   final result = await _request(transaction.objectStore(storeName).getAll());
   if (result == null) return const [];
-  return (result as JSArray<JSAny?>)
-      .toDart
+  return (result as JSArray<JSAny?>).toDart
       .map((value) => (value as JSString).toDart)
       .toList();
 }
@@ -303,13 +326,23 @@ Future<List<String>> _readAllStrings(
 Future<void> _deleteDatabase(String name) {
   final completer = Completer<void>();
   final request = window.indexedDB.deleteDatabase('isar-$name');
-  request.onsuccess = ((Event event) => completer.complete()).toJS;
-  request.onerror = ((Event event) => completer.completeError(
+  request.onsuccess = ((Event event) {
+    if (!completer.isCompleted) completer.complete();
+  }).toJS;
+  request.onerror = ((Event event) {
+    if (!completer.isCompleted) {
+      completer.completeError(
         IsarError(request.error?.message ?? 'Failed to delete IndexedDB.'),
-      )).toJS;
-  request.onblocked = ((Event event) => completer.completeError(
+      );
+    }
+  }).toJS;
+  request.onblocked = ((Event event) {
+    if (!completer.isCompleted) {
+      completer.completeError(
         IsarError('IndexedDB deletion was blocked by another tab.'),
-      )).toJS;
+      );
+    }
+  }).toJS;
   return completer.future;
 }
 
@@ -348,33 +381,46 @@ Future<BroadcastChannel> _acquireLease(String name) async {
 
 Future<JSAny?> _request(IDBRequest request) {
   final completer = Completer<JSAny?>();
-  request.onsuccess =
-      ((Event event) => completer.complete(request.result)).toJS;
+  request.onsuccess = ((Event event) => completer.complete(
+    request.result,
+  )).toJS;
   request.onerror = ((Event event) => completer.completeError(
-        IsarError(request.error?.message ?? 'IndexedDB request failed.'),
-      )).toJS;
+    IsarError(request.error?.message ?? 'IndexedDB request failed.'),
+  )).toJS;
   return completer.future;
 }
 
 Future<void> _transaction(IDBTransaction transaction) {
   final completer = Completer<void>();
-  transaction.oncomplete = ((Event event) => completer.complete()).toJS;
-  transaction.onerror = ((Event event) => completer.completeError(
+  transaction.oncomplete = ((Event event) {
+    if (!completer.isCompleted) completer.complete();
+  }).toJS;
+  transaction.onerror = ((Event event) {
+    if (!completer.isCompleted) {
+      completer.completeError(
         IsarError(
-            transaction.error?.message ?? 'IndexedDB transaction failed.'),
-      )).toJS;
-  transaction.onabort = ((Event event) => completer.completeError(
+          transaction.error?.message ?? 'IndexedDB transaction failed.',
+        ),
+      );
+    }
+  }).toJS;
+  transaction.onabort = ((Event event) {
+    if (!completer.isCompleted) {
+      completer.completeError(
         IsarError(
-            transaction.error?.message ?? 'IndexedDB transaction aborted.'),
-      )).toJS;
+          transaction.error?.message ?? 'IndexedDB transaction aborted.',
+        ),
+      );
+    }
+  }).toJS;
   return completer.future;
 }
 
 bool _schemasCompatible(String storedSource, String expectedSource) {
-  final stored =
-      (jsonDecode(storedSource) as List).cast<Map<String, dynamic>>();
-  final expected =
-      (jsonDecode(expectedSource) as List).cast<Map<String, dynamic>>();
+  final stored = (jsonDecode(storedSource) as List)
+      .cast<Map<String, dynamic>>();
+  final expected = (jsonDecode(expectedSource) as List)
+      .cast<Map<String, dynamic>>();
   final expectedCollections = {
     for (final collection in expected) collection['name']: collection,
   };
@@ -434,14 +480,15 @@ Map<Object, dynamic> _migrateRecord(
   Map<String, Schema<dynamic>>? newEmbedded,
 }) {
   if (oldSchema == null) return data;
-  final oldProperties =
-      (oldSchema['properties'] as List).cast<Map<String, dynamic>>();
+  final oldProperties = (oldSchema['properties'] as List)
+      .cast<Map<String, dynamic>>();
   oldEmbedded ??= {
     for (final embedded in (oldSchema['embeddedSchemas'] as List? ?? const []))
       (embedded as Map<String, dynamic>)['name'] as String: embedded,
   };
-  newEmbedded ??=
-      schema is CollectionSchema ? schema.embeddedSchemas : const {};
+  newEmbedded ??= schema is CollectionSchema
+      ? schema.embeddedSchemas
+      : const {};
   final migrated = <Object, dynamic>{};
   for (final property in schema.properties.values) {
     final oldId = oldProperties.indexWhere(
@@ -504,8 +551,8 @@ dynamic _stringifyKeys(dynamic value) {
       '@double': value.isNaN
           ? 'nan'
           : value.isNegative
-              ? '-infinity'
-              : 'infinity',
+          ? '-infinity'
+          : 'infinity',
     };
   }
   if (value is Map) {

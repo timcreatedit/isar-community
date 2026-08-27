@@ -176,6 +176,27 @@ void main() {
     await isar.close(deleteFromDisk: true);
   });
 
+  test('does not resurrect a removed and re-added collection', () async {
+    const name = 'indexeddb-remove-readd-test';
+    var isar = await Isar.open([webObjectSchema], name: name);
+    await isar.writeTxn(
+      () => isar.collection<WebObject>().put(WebObject('removed')),
+    );
+    await isar.close();
+
+    final withoutCollection = await indexeddb.openIsar(
+      schemas: const [],
+      name: name,
+      maxSizeMiB: 256,
+      relaxedDurability: true,
+    );
+    await withoutCollection.close();
+
+    isar = await Isar.open([webObjectSchema], name: name);
+    expect(await isar.collection<WebObject>().count(), 0);
+    await isar.close(deleteFromDisk: true);
+  });
+
   test('rejects a concurrent direct owner', () async {
     const name = 'indexeddb-owner-test';
     final first = await indexeddb.openIsar(
