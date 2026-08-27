@@ -47,8 +47,7 @@ int _estimateSize(
   MemoryObject object,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
-) =>
-    object.name.length;
+) => object.name.length;
 
 void _serialize(
   MemoryObject object,
@@ -64,16 +63,14 @@ MemoryObject _deserialize(
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
-) =>
-    MemoryObject(reader.readString(offsets[0]), id: id);
+) => MemoryObject(reader.readString(offsets[0]), id: id);
 
 dynamic _deserializeProp(
   IsarReader reader,
   int propertyId,
   int offset,
   Map<Type, List<int>> allOffsets,
-) =>
-    reader.readString(offset);
+) => reader.readString(offset);
 
 int _getId(MemoryObject object) => object.id;
 List<IsarLinkBase<dynamic>> _getLinks(MemoryObject object) => const [];
@@ -107,25 +104,22 @@ void main() {
   });
 
   test('supports async CRUD and exact delete counts', () async {
-    final isar = await IsarMemory.open(
-      [memoryObjectSchema],
-      name: 'async-memory',
-    );
+    final isar = await IsarMemory.open([
+      memoryObjectSchema,
+    ], name: 'async-memory');
     final objects = isar.collection<MemoryObject>();
-    await isar.writeTxn(() => objects.putAll([
-          MemoryObject('one'),
-          MemoryObject('two'),
-        ]));
+    await isar.writeTxn(
+      () => objects.putAll([MemoryObject('one'), MemoryObject('two')]),
+    );
     expect(await objects.where().count(), 2);
     expect(await isar.writeTxn(() => objects.deleteAll([1, 1, 99])), 1);
     expect(await objects.where().count(), 1);
   });
 
   test('serializes concurrent async writes', () async {
-    final isar = await IsarMemory.open(
-      [memoryObjectSchema],
-      name: 'write-queue',
-    );
+    final isar = await IsarMemory.open([
+      memoryObjectSchema,
+    ], name: 'write-queue');
     final objects = isar.collection<MemoryObject>();
     await Future.wait([
       isar.writeTxn(() async {
@@ -138,10 +132,9 @@ void main() {
   });
 
   test('rejects nested transactions and honors silent watchers', () async {
-    final isar = await IsarMemory.open(
-      [memoryObjectSchema],
-      name: 'transaction-semantics',
-    );
+    final isar = await IsarMemory.open([
+      memoryObjectSchema,
+    ], name: 'transaction-semantics');
     final objects = isar.collection<MemoryObject>();
     expect(
       () => isar.writeTxnSync(() => isar.txnSync(() {})),

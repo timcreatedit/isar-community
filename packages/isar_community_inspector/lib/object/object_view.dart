@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_community_inspector/object/isar_object.dart';
 import 'package:isar_community_inspector/object/property_embedded_view.dart';
 import 'package:isar_community_inspector/object/property_link_view.dart';
@@ -19,12 +19,8 @@ class ObjectView extends StatelessWidget {
   final String schemaName;
   final Map<String, Schema<dynamic>> schemas;
   final IsarObject object;
-  final void Function(
-    String collection,
-    int? id,
-    String path,
-    dynamic value,
-  ) onUpdate;
+  final void Function(String collection, int? id, String path, dynamic value)
+  onUpdate;
 
   @override
   Widget build(BuildContext context) {
@@ -52,11 +48,11 @@ class ObjectView extends StatelessWidget {
               property: property,
               value: object.getValue(property.name),
               isId: false,
-              isIndexed: schema is CollectionSchema &&
+              isIndexed:
+                  schema is CollectionSchema &&
                   schema.indexes.values.any(
-                    (index) => index.properties.any(
-                      (p) => p.name == property.name,
-                    ),
+                    (index) =>
+                        index.properties.any((p) => p.name == property.name),
                   ),
               onUpdate: (value) {
                 onUpdate(schemaName, id, property.name, value);

@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 
 extension CollectionSchemaX on CollectionSchema<dynamic> {
   PropertySchema propertyOrId(String name) {
@@ -10,7 +10,7 @@ extension CollectionSchemaX on CollectionSchema<dynamic> {
   }
 
   List<PropertySchema> get idAndProperties => [
-        PropertySchema(id: 0, name: idName, type: IsarType.long),
-        ...properties.values,
-      ];
+    PropertySchema(id: 0, name: idName, type: IsarType.long),
+    ...properties.values,
+  ];
 }

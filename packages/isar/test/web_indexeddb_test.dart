@@ -6,11 +6,7 @@ import 'package:isar/src/web/indexeddb_open.dart' as indexeddb;
 import 'package:test/test.dart';
 
 class WebObject {
-  WebObject(
-    this.value, {
-    this.id = Isar.autoIncrement,
-    this.count = 0,
-  });
+  WebObject(this.value, {this.id = Isar.autoIncrement, this.count = 0});
 
   int id;
   String value;
@@ -62,8 +58,7 @@ int _estimateSize(
   WebObject object,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
-) =>
-    object.value.length;
+) => object.value.length;
 
 void _serialize(
   WebObject object,
@@ -90,36 +85,32 @@ WebObject _deserialize(
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
-) =>
-    WebObject(reader.readString(offsets[0]), id: id);
+) => WebObject(reader.readString(offsets[0]), id: id);
 
 WebObject _deserializeV2(
   int id,
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
-) =>
-    WebObject(
-      reader.readString(offsets[0]),
-      id: id,
-      count: reader.readLong(offsets[1]),
-    );
+) => WebObject(
+  reader.readString(offsets[0]),
+  id: id,
+  count: reader.readLong(offsets[1]),
+);
 
 dynamic _deserializeProp(
   IsarReader reader,
   int propertyId,
   int offset,
   Map<Type, List<int>> allOffsets,
-) =>
-    reader.readString(offset);
+) => reader.readString(offset);
 
 dynamic _deserializePropV2(
   IsarReader reader,
   int propertyId,
   int offset,
   Map<Type, List<int>> allOffsets,
-) =>
-    propertyId == 0 ? reader.readString(offset) : reader.readLong(offset);
+) => propertyId == 0 ? reader.readString(offset) : reader.readLong(offset);
 
 int _getId(WebObject object) => object.id;
 List<IsarLinkBase<dynamic>> _getLinks(WebObject object) => const [];
@@ -206,18 +197,15 @@ void main() {
   });
 
   test('notifies query watchers after commits', () async {
-    final isar = await Isar.open(
-      [webObjectSchema],
-      name: 'indexeddb-query-watcher-test',
-    );
+    final isar = await Isar.open([
+      webObjectSchema,
+    ], name: 'indexeddb-query-watcher-test');
     final objects = isar.collection<WebObject>();
     await isar.writeTxn(objects.clear);
 
-    final changed = objects
-        .where()
-        .watchLazy()
-        .first
-        .timeout(const Duration(seconds: 2));
+    final changed = objects.where().watchLazy().first.timeout(
+      const Duration(seconds: 2),
+    );
     await isar.writeTxn(() => objects.put(WebObject('watched')));
     await changed;
 

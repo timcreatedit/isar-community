@@ -8,7 +8,7 @@ import 'dart:math';
 import 'package:clickup_fading_scroll/clickup_fading_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_community_inspector/collection/button_prev_next.dart';
 import 'package:isar_community_inspector/collection/button_sort.dart';
 import 'package:isar_community_inspector/collection/objects_list_sliver.dart';
@@ -235,21 +235,14 @@ class _CollectionAreaState extends State<CollectionArea> {
   Future<void> _onCreate() async {
     final idName = widget.collectionSchema.idName;
     final randomId = Random().nextInt(100000000);
-    await widget.client.importJson(
-      widget.instance,
-      widget.collection,
-      [
-        {idName: randomId},
-      ],
-    );
+    await widget.client.importJson(widget.instance, widget.collection, [
+      {idName: randomId},
+    ]);
     if (!mounted) return;
 
     setState(() {
       filter = FilterGroup.and([
-        FilterCondition.equalTo(
-          property: idName,
-          value: randomId,
-        ),
+        FilterCondition.equalTo(property: idName, value: randomId),
       ]);
     });
     await _runQuery();

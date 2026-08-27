@@ -15,8 +15,8 @@ dependencies:
   font_awesome_flutter: any
   go_router: ^5.0.0
   google_fonts: 6.1.0
-  isar_community:
-    path: ../isar_community
+  isar:
+    path: ../isar
   vm_service: ^11.0.0
   web_socket_channel: ^2.2.0
 

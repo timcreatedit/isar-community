@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 
 part 'mutli_type_model.g.dart';
 

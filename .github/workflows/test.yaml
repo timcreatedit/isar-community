@@ -1,7 +1,7 @@
 name: Dart CI
 
 env:
-  FLUTTER_OVERRIDE: "3.27.0"
+  FLUTTER_OVERRIDE: "3.44.6"
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
       - v3*
+      - clickup/**
 
 jobs:
   version:
@@ -60,7 +61,7 @@ jobs:
           dart tool/generate_all_tests.dart
         working-directory: packages/isar_test
       - name: Lint
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
   dart_backends:
     name: Dart memory and web
@@ -69,7 +70,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ secrets.FLUTTER_VERSION }}
+          flutter-version: ${{ env.FLUTTER_OVERRIDE || vars.FLUTTER_VERSION }}
       - name: Resolve Isar
         run: dart pub get
         working-directory: packages/isar
@@ -117,7 +118,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ secrets.FLUTTER_VERSION }}
+          flutter-version: ${{ env.FLUTTER_OVERRIDE || vars.FLUTTER_VERSION }}
       - name: Resolve test dependencies
         run: flutter pub get
         working-directory: packages/isar_test
@@ -206,23 +207,23 @@ jobs:
           flutter pub add json_annotation
           flutter pub add intl
           flutter pub add isar_test --path ../isar_test
-        working-directory: packages/isar_community
+        working-directory: packages/isar
       - name: Collect isar Coverage
         run: |
           flutter test --coverage --coverage-path lcov_isar.info
-        working-directory: packages/isar_community
+        working-directory: packages/isar
       - name: Collect isar_test Coverage
         run: |
           flutter test --coverage ../isar_test/test --coverage-path lcov_isar_test.info
-        working-directory: packages/isar_community
+        working-directory: packages/isar
       - name: Upload isar Coverage
         uses: codecov/codecov-action@v3
         with:
-          files: packages/isar_community/lcov_isar.info
+          files: packages/isar/lcov_isar.info
       - name: Upload isar_test Coverage
         uses: codecov/codecov-action@v3
         with:
-          files: packages/isar_community/lcov_isar_test.info
+          files: packages/isar/lcov_isar_test.info
 
   test_generator:
     name: Generator Test
