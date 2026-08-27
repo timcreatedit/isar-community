@@ -1,8 +1,12 @@
 @TestOn('browser')
 library;
 
+import 'dart:typed_data';
+
 import 'package:isar/isar.dart';
 import 'package:isar/src/web/indexeddb_open.dart' as indexeddb;
+import 'package:isar/src/web/isar_reader_impl.dart' as web;
+import 'package:isar/src/web/isar_writer_impl.dart' as web;
 import 'package:test/test.dart';
 
 class WebObject {
@@ -121,6 +125,25 @@ void _attach(IsarCollection<WebObject> col, int id, WebObject object) {
 void main() {
   test('splits Unicode words without native code', () {
     expect(Isar.splitWords('Hello, 世界 123'), ['Hello', '世界', '123']);
+  });
+
+  test('matches native numeric encoding and null sentinels', () {
+    final data = <Object, dynamic>{};
+    web.IsarWriterImpl(data)
+      ..writeFloat(0, 0.1)
+      ..writeFloatList(1, [0.1, null])
+      ..writeIntList(2, [null])
+      ..writeLongList(3, [null])
+      ..writeDoubleList(4, [null]);
+    final reader = web.IsarReaderImpl(data);
+
+    final rounded = Float32List.fromList([0.1]).single;
+    expect(reader.readFloat(0), rounded);
+    expect(reader.readFloatList(1)!.first, rounded);
+    expect(reader.readFloatList(1)!.last, isNaN);
+    expect(reader.readIntList(2), [-2147483648]);
+    expect(reader.readLongList(3), [-9223372036854775808]);
+    expect(reader.readDoubleList(4)!.single, isNaN);
   });
 
   test('persists committed state and rolls back failed transactions', () async {

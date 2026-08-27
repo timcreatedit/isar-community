@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs
 
+import 'dart:typed_data';
+
 import 'package:isar/isar.dart';
 import 'package:meta/dart2js.dart';
 
@@ -40,7 +42,7 @@ class IsarWriterImpl implements IsarWriter {
   @tryInline
   @override
   void writeFloat(int offset, double? value) {
-    setProperty(object, offset, value);
+    setProperty(object, offset, _toFloat32(value));
   }
 
   @tryInline
@@ -118,7 +120,7 @@ class IsarWriterImpl implements IsarWriter {
   @tryInline
   @override
   void writeFloatList(int offset, List<double?>? values) {
-    final list = values?.toList();
+    final list = values?.map(_toFloat32).toList();
     setProperty(object, offset, list);
   }
 
@@ -171,3 +173,6 @@ class IsarWriterImpl implements IsarWriter {
     }
   }
 }
+
+double? _toFloat32(double? value) =>
+    value == null ? null : Float32List.fromList([value]).single;
