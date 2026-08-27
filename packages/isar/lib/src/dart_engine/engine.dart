@@ -198,7 +198,9 @@ class DartEngineIsar extends IsarCommon {
       if (schema.single) targets.clear();
       targets[id] = true;
     }
-    transaction.changed.add(collection);
+    transaction.changed
+      ..add(collection)
+      ..add(schema.target);
     transaction.changedObjects.putIfAbsent(collection, () => {}).add(sourceId);
   }
 
@@ -406,7 +408,7 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
       final duplicate = _findByIndex(records, index.name, key);
       if (duplicate != null && duplicate != id) {
         if (index.replace) {
-          records.remove(duplicate);
+          _deleteIds(transaction, [duplicate]);
         } else {
           throw IsarUniqueViolationError();
         }
@@ -511,12 +513,21 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
     final properties = schema.index(indexName).properties;
     return [
       for (var i = 0; i < key.length; i++)
-        key[i] is String &&
-                i < properties.length &&
-                !properties[i].caseSensitive
-            ? (key[i] as String).toLowerCase()
-            : key[i],
+        _normalizeIndexValue(
+          key[i],
+          i < properties.length ? properties[i] : null,
+        ),
     ];
+  }
+
+  dynamic _normalizeIndexValue(dynamic value, IndexPropertySchema? index) {
+    if (index == null) return value;
+    if (value is String && !index.caseSensitive) return value.toLowerCase();
+    final property = schema.property(index.name);
+    if (value is double && property.type.scalarType == IsarType.float) {
+      return (Float32List(1)..[0] = value)[0];
+    }
+    return value;
   }
 
   Id? _findByIndex(
@@ -697,7 +708,7 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
         );
         if (duplicate != null && duplicate != id) {
           if (index.replace) {
-            records.remove(duplicate);
+            _deleteIds(transaction, [duplicate]);
           } else {
             throw IsarUniqueViolationError();
           }
@@ -903,19 +914,14 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
   }) async {
     final target = targetCollection as DartEngineCollection<T>;
     await isar.getTxn(true, (EngineTransaction transaction) async {
-      final add = <Id>[];
-      for (final object in link) {
-        var id = target.schema.getId(object);
-        if (id == Isar.autoIncrement) id = await target.put(object);
-        add.add(id);
-      }
+      final add = link.map((object) => _requireLinkId(target, object)).toList();
       isar.updateLink(
         transaction,
         name,
         linkName,
         sourceId,
         add: add,
-        remove: unlink.map(target.schema.getId),
+        remove: unlink.map((object) => _requireLinkId(target, object)),
         reset: reset,
       );
     });
@@ -944,10 +950,21 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
         linkName,
         sourceId,
         add: add,
-        remove: unlink.map(target.schema.getId),
+        remove: unlink.map((object) => _requireLinkId(target, object)),
         reset: reset,
       );
     });
+  }
+
+  Id _requireLinkId<T>(DartEngineCollection<T> target, T object) {
+    final id = target.schema.getId(object);
+    if (id == Isar.autoIncrement) {
+      throw IsarError(
+        'Object "$object" has no id and can therefore not be linked. '
+        'Make sure to .put() objects before you use them in links.',
+      );
+    }
+    return id;
   }
 
   @override

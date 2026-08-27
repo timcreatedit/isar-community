@@ -15,17 +15,9 @@ mixin DartEngineLinkMixin<OBJ> on IsarLinkBaseImpl<OBJ> {
     bool reset = false,
   }) async {
     final source = sourceCollection as DartEngineCollection<dynamic>;
-    final target = targetCollection as DartEngineCollection<OBJ>;
     final isar = source.isar;
     final sourceId = requireAttached();
-    final add = <Id>[];
-    for (final object in link) {
-      var id = getId(object);
-      if (id == Isar.autoIncrement) {
-        id = await target.put(object);
-      }
-      add.add(id);
-    }
+    final add = link.map(requireGetId).toList();
     final remove = unlink.map(requireGetId).toList();
     await isar.getTxn(true, (EngineTransaction transaction) async {
       isar.updateLink(
