@@ -179,7 +179,9 @@ void main() {
     isar = await Isar.open([webObjectSchemaV2], name: name);
     final object = await isar.collection<WebObject>().where().findFirst();
     expect(object?.value, 'old');
-    expect(object?.count, 0);
+    // Match the native backend's no-default migration semantics for a
+    // non-nullable long property.
+    expect(object?.count, Isar.minId);
     await isar.close(deleteFromDisk: true);
   });
 
