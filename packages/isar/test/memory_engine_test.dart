@@ -47,7 +47,8 @@ int _estimateSize(
   MemoryObject object,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
-) => object.name.length;
+) =>
+    object.name.length;
 
 void _serialize(
   MemoryObject object,
@@ -63,14 +64,16 @@ MemoryObject _deserialize(
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
-) => MemoryObject(reader.readString(offsets[0]), id: id);
+) =>
+    MemoryObject(reader.readString(offsets[0]), id: id);
 
 dynamic _deserializeProp(
   IsarReader reader,
   int propertyId,
   int offset,
   Map<Type, List<int>> allOffsets,
-) => reader.readString(offset);
+) =>
+    reader.readString(offset);
 
 int _getId(MemoryObject object) => object.id;
 List<IsarLinkBase<dynamic>> _getLinks(MemoryObject object) => const [];

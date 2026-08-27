@@ -34,7 +34,10 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_OVERRIDE || vars.FLUTTER_VERSION }}
       - name: Check formatting
-        run: dart format --set-exit-if-changed .
+        run: >-
+          find . -name '*.dart' ! -name '*.g.dart' ! -name 'all_tests.dart'
+          -print0 | xargs -0 dart format --language-version 3.6
+          --output=none --set-exit-if-changed
 
   lint:
     name: Check lints
@@ -141,7 +144,7 @@ jobs:
     name: Dart Test
     strategy:
       matrix:
-        os: [macos-14, macos-13, ubuntu-22.04, windows-2022]
+        os: [macos-14, macos-15-intel, ubuntu-22.04, windows-2022]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -310,7 +313,9 @@ jobs:
 
   integration_test_macos:
     name: Integration Test macOS
-    runs-on: macos-14
+    # The desktop integration harness relies on host temporary paths that are
+    # not visible inside Flutter's sandboxed app on ARM runner images.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2

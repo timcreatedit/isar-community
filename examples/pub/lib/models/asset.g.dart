@@ -13,9 +13,9 @@ extension GetAssetCollection on Isar {
   IsarCollection<Asset> get assets => this.collection();
 }
 
-const AssetSchema = CollectionSchema(
+final AssetSchema = CollectionSchema(
   name: r'Asset',
-  id: -2933289051367723566,
+  id: Isar.schemaId('-2933289051367723566', -5949293576901491),
   properties: {
     r'content': PropertySchema(
       id: 0,
@@ -46,7 +46,7 @@ const AssetSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'package_version_kind': IndexSchema(
-      id: 486865644163081160,
+      id: Isar.schemaId('486865644163081160', 476884407067646),
       name: r'package_version_kind',
       unique: true,
       replace: true,

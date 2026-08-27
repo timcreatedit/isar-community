@@ -543,8 +543,8 @@ void main() {
       await isar.tWriteTxn(() => linksA.tPut(objA1));
       await isar.tWriteTxn(() => linksB.tPut(objB1));
       final notified = objA1.otherLinks.filter().watchLazy().first.timeout(
-        const Duration(seconds: 2),
-      );
+            const Duration(seconds: 2),
+          );
 
       objA1.otherLinks.add(objB1);
       await isar.tWriteTxn(objA1.otherLinks.tSave);

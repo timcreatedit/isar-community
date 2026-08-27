@@ -41,8 +41,7 @@ Future<Isar> openIsar({
       );
     }
 
-    var revision =
-        int.tryParse(
+    var revision = int.tryParse(
           await _readString(database, _metaStore, _revisionKey) ?? '',
         ) ??
         0;
@@ -118,11 +117,11 @@ Isar openIsarSync({
 }
 
 List<String> _stores(List<CollectionSchema<dynamic>> schemas) => [
-  _metaStore,
-  _linksStore,
-  _countersStore,
-  for (final schema in schemas) _collectionStore(schema.name),
-];
+      _metaStore,
+      _linksStore,
+      _countersStore,
+      for (final schema in schemas) _collectionStore(schema.name),
+    ];
 
 Future<IDBDatabase> _openDatabase(
   String name,
@@ -188,9 +187,9 @@ Future<IDBDatabase> _openRequest(
 }
 
 Set<String> _objectStoreNames(IDBDatabase database) => {
-  for (var i = 0; i < database.objectStoreNames.length; i++)
-    if (database.objectStoreNames.item(i) case final String name) name,
-};
+      for (var i = 0; i < database.objectStoreNames.length; i++)
+        if (database.objectStoreNames.item(i) case final String name) name,
+    };
 
 Future<EngineState?> _readState(
   IDBDatabase database,
@@ -214,8 +213,8 @@ Future<EngineState?> _readState(
   }
   for (final value in await _readAllStrings(database, _linksStore)) {
     final record = jsonDecode(value) as Map<String, dynamic>;
-    state.putIfAbsent(record['store'] as String, () => {})[record['id']
-            as int] =
+    state.putIfAbsent(
+            record['store'] as String, () => {})[record['id'] as int] =
         _integerKeys(record['data']) as Map<Object, dynamic>;
     found = true;
   }
@@ -318,7 +317,8 @@ Future<List<String>> _readAllStrings(
   final transaction = database.transaction(storeName.toJS, 'readonly');
   final result = await _request(transaction.objectStore(storeName).getAll());
   if (result == null) return const [];
-  return (result as JSArray<JSAny?>).toDart
+  return (result as JSArray<JSAny?>)
+      .toDart
       .map((value) => (value as JSString).toDart)
       .toList();
 }
@@ -382,11 +382,11 @@ Future<BroadcastChannel> _acquireLease(String name) async {
 Future<JSAny?> _request(IDBRequest request) {
   final completer = Completer<JSAny?>();
   request.onsuccess = ((Event event) => completer.complete(
-    request.result,
-  )).toJS;
+        request.result,
+      )).toJS;
   request.onerror = ((Event event) => completer.completeError(
-    IsarError(request.error?.message ?? 'IndexedDB request failed.'),
-  )).toJS;
+        IsarError(request.error?.message ?? 'IndexedDB request failed.'),
+      )).toJS;
   return completer.future;
 }
 
@@ -417,10 +417,10 @@ Future<void> _transaction(IDBTransaction transaction) {
 }
 
 bool _schemasCompatible(String storedSource, String expectedSource) {
-  final stored = (jsonDecode(storedSource) as List)
-      .cast<Map<String, dynamic>>();
-  final expected = (jsonDecode(expectedSource) as List)
-      .cast<Map<String, dynamic>>();
+  final stored =
+      (jsonDecode(storedSource) as List).cast<Map<String, dynamic>>();
+  final expected =
+      (jsonDecode(expectedSource) as List).cast<Map<String, dynamic>>();
   final expectedCollections = {
     for (final collection in expected) collection['name']: collection,
   };
@@ -480,15 +480,14 @@ Map<Object, dynamic> _migrateRecord(
   Map<String, Schema<dynamic>>? newEmbedded,
 }) {
   if (oldSchema == null) return data;
-  final oldProperties = (oldSchema['properties'] as List)
-      .cast<Map<String, dynamic>>();
+  final oldProperties =
+      (oldSchema['properties'] as List).cast<Map<String, dynamic>>();
   oldEmbedded ??= {
     for (final embedded in (oldSchema['embeddedSchemas'] as List? ?? const []))
       (embedded as Map<String, dynamic>)['name'] as String: embedded,
   };
-  newEmbedded ??= schema is CollectionSchema
-      ? schema.embeddedSchemas
-      : const {};
+  newEmbedded ??=
+      schema is CollectionSchema ? schema.embeddedSchemas : const {};
   final migrated = <Object, dynamic>{};
   for (final property in schema.properties.values) {
     final oldId = oldProperties.indexWhere(
@@ -551,8 +550,8 @@ dynamic _stringifyKeys(dynamic value) {
       '@double': value.isNaN
           ? 'nan'
           : value.isNegative
-          ? '-infinity'
-          : 'infinity',
+              ? '-infinity'
+              : 'infinity',
     };
   }
   if (value is Map) {

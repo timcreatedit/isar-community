@@ -100,12 +100,11 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ>
         final buffer = cObj.buffer.asTypedList(cObj.buffer_length);
         values.add(
           schema.deserializeProp(
-                IsarReaderImpl(buffer),
-                propertyId,
-                propertyOffset,
-                isar.offsets,
-              )
-              as T,
+            IsarReaderImpl(buffer),
+            propertyId,
+            propertyOffset,
+            isar.offsets,
+          ) as T,
         );
       }
     } else {

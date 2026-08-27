@@ -57,7 +57,8 @@ bool skipIfUnsupported(BackendCapability capability) {
   test(
     'requires ${capability.name}',
     () {},
-    skip: 'The ${testBackend.name} backend does not support ${capability.name}.',
+    skip:
+        'The ${testBackend.name} backend does not support ${capability.name}.',
   );
   return true;
 }
