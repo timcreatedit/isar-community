@@ -80,6 +80,11 @@ jobs:
       - name: Resolve backend conformance tests
         run: flutter pub get
         working-directory: packages/isar_test
+      - name: Generate backend conformance models
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          dart tool/generate_all_tests.dart
+        working-directory: packages/isar_test
       - name: Test full memory backend conformance
         run: flutter test -j 1 --dart-define=ISAR_TEST_BACKEND=memory
         working-directory: packages/isar_test
@@ -97,10 +102,10 @@ jobs:
         working-directory: packages/isar
       - name: Build inspector JavaScript
         run: flutter build web
-        working-directory: packages/isar_inspector
+        working-directory: packages/isar_community_inspector
       - name: Build inspector WebAssembly
         run: flutter build web --wasm
-        working-directory: packages/isar_inspector
+        working-directory: packages/isar_community_inspector
       - name: Reject retired web bridge
         run: |
           ! rg "dart:(html|indexed_db|js'|js_util)|package:js/|unpkg.com/isar" \

@@ -9,15 +9,17 @@ dependencies:
   clickup_fading_scroll:
     git:
       url: https://github.com/clickup/clickup_fading_scroll
+      ref: ec1a3dd393c3d88a60db51c21667ae2b1923c65e
   flutter:
     sdk: flutter
   flutter_svg: any
   font_awesome_flutter: any
   go_router: ^5.0.0
-  google_fonts: 6.1.0
+  google_fonts: 8.2.1
   isar:
     path: ../isar
   vm_service: ^11.0.0
+  web: ^1.1.0
   web_socket_channel: ^2.2.0
 
 dev_dependencies:

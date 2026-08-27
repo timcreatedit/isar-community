@@ -14,6 +14,7 @@ dependencies:
   clickup_fading_scroll:
     git:
       url: https://github.com/clickup/clickup_fading_scroll.git
+      ref: ec1a3dd393c3d88a60db51c21667ae2b1923c65e
   dio: ^4.0.0
   flutter:
     sdk: flutter
