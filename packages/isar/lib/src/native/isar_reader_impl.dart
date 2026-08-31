@@ -139,7 +139,7 @@ class IsarReaderImpl implements IsarReader {
   @override
   int readLong(int offset) {
     if (offset >= _staticSize) {
-      return isarMinId;
+      return nullLong;
     }
     return _byteData.getInt64(offset, Endian.little);
   }

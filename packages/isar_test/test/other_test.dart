@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Other', () {
-    isarTestVm('split words', () {
+    isarTest('split words', () {
       expect(Isar.splitWords(''), <String>[]);
       expect(Isar.splitWords('single'), ['single']);
       expect(
@@ -42,6 +42,6 @@ void main() {
             'фальшивый',
             'экземпляр',
           ]);
-    });
+    }, skip: kIsWeb || isMemoryBackend);
   });
 }
