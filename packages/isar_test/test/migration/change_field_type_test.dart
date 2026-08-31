@@ -1,6 +1,6 @@
 @TestOn('vm')
 
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -37,6 +37,8 @@ class Model2 {
 }
 
 void main() {
+  if (skipIfUnsupported(BackendCapability.schemaMigration)) return;
+
   isarTest('Change field type', () async {
     final isar1 = await openTempIsar([Model1Schema]);
     final obj1A = Model1(1, 'a', 'OBJ1');

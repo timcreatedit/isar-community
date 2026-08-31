@@ -13,9 +13,9 @@ extension GetPackageCollection on Isar {
   IsarCollection<Package> get packages => this.collection();
 }
 
-const PackageSchema = CollectionSchema(
+final PackageSchema = CollectionSchema(
   name: r'Package',
-  id: 6192244575192772594,
+  id: Isar.schemaId('6192244575192772594', 4298687185711777),
   properties: {
     r'dart': PropertySchema(
       id: 0,
@@ -123,7 +123,7 @@ const PackageSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'name_version': IndexSchema(
-      id: -1742246077971712210,
+      id: Isar.schemaId('-1742246077971712210', -3856621806700947),
       name: r'name_version',
       unique: true,
       replace: true,
@@ -3075,9 +3075,9 @@ extension PackageQueryProperty
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
-const DependencySchema = Schema(
+final DependencySchema = Schema(
   name: r'Dependency',
-  id: 1812194757347981783,
+  id: Isar.schemaId('1812194757347981783', 1747707145042592),
   properties: {
     r'constraint': PropertySchema(
       id: 0,

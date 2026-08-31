@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -63,7 +63,7 @@ void main() {
       });
       expect(obj4.id, 21);
       await qEqual(isar.models.where(), [obj1, obj2, obj3, obj4]);
-    });
+    }, skip: !supportsCapability(BackendCapability.diskPersistence));
 
     isarTest('Prevents usage of closed collection', () async {
       final isar = await openTempIsar([ModelSchema]);

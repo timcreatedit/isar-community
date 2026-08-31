@@ -2,7 +2,7 @@
 
 import 'dart:isolate';
 
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -52,6 +52,8 @@ Future<void> _isolateFunc(SendPort port) async {
 }
 
 void main() {
+  if (skipIfUnsupported(BackendCapability.isolates)) return;
+
   isarTest('Isolate test', () async {
     final isar = await openTempIsar([TestModelSchema], name: 'test');
 

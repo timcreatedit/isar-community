@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -12,6 +12,8 @@ class Model {
 }
 
 void main() {
+  if (skipIfUnsupported(BackendCapability.configuredMaxSize)) return;
+
   group('Max Size', () {
     test('default', () async {
       final isar = await openTempIsar([ModelSchema]);

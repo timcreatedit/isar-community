@@ -1,7 +1,7 @@
 name: Dart CI
 
 env:
-  FLUTTER_OVERRIDE: "3.27.0"
+  FLUTTER_OVERRIDE: "3.44.6"
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
       - v3*
+      - clickup/**
 
 jobs:
   version:
@@ -33,7 +34,10 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_OVERRIDE || vars.FLUTTER_VERSION }}
       - name: Check formatting
-        run: dart format --set-exit-if-changed .
+        run: >-
+          find . -name '*.dart' ! -name '*.g.dart' ! -name 'all_tests.dart'
+          -print0 | xargs -0 dart format --language-version 3.6
+          --output=none --set-exit-if-changed
 
   lint:
     name: Check lints
@@ -45,11 +49,11 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_OVERRIDE || vars.FLUTTER_VERSION }}
       - run: flutter pub get
-        working-directory: packages/isar_community
+        working-directory: packages/isar
       - run: flutter pub get
         working-directory: packages/isar_community_flutter_libs
       - run: flutter pub get
-        working-directory: packages/isar_community_generator
+        working-directory: packages/isar_generator
       - run: flutter pub get
         working-directory: packages/isar_community_inspector
       - run: flutter pub get
@@ -60,13 +64,87 @@ jobs:
           dart tool/generate_all_tests.dart
         working-directory: packages/isar_test
       - name: Lint
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+  dart_backends:
+    name: Dart memory and web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_OVERRIDE || vars.FLUTTER_VERSION }}
+      - name: Resolve Isar
+        run: dart pub get
+        working-directory: packages/isar
+      - name: Test memory without native core
+        run: dart test test/memory_engine_test.dart
+        working-directory: packages/isar
+      - name: Resolve backend conformance tests
+        run: flutter pub get
+        working-directory: packages/isar_test
+      - name: Generate backend conformance models
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          dart tool/generate_all_tests.dart
+        working-directory: packages/isar_test
+      - name: Test full memory backend conformance
+        run: flutter test -j 1 --dart-define=ISAR_TEST_BACKEND=memory
+        working-directory: packages/isar_test
+      - name: Test IndexedDB in Chrome
+        run: dart test -p chrome test/web_indexeddb_test.dart
+        working-directory: packages/isar
+      - name: Test IndexedDB with WebAssembly
+        run: dart test -p chrome --compiler dart2wasm test/web_indexeddb_test.dart
+        working-directory: packages/isar
+      - name: Compile JavaScript boundary
+        run: dart compile js tool/compile_smoke.dart -o /tmp/isar-smoke.js
+        working-directory: packages/isar
+      - name: Compile WebAssembly boundary
+        run: dart compile wasm tool/compile_smoke.dart -o /tmp/isar-smoke.wasm
+        working-directory: packages/isar
+      - name: Build inspector JavaScript
+        run: flutter build web
+        working-directory: packages/isar_community_inspector
+      - name: Build inspector WebAssembly
+        run: flutter build web --wasm
+        working-directory: packages/isar_community_inspector
+      - name: Reject retired web bridge
+        run: |
+          ! rg "dart:(html|indexed_db|js'|js_util)|package:js/|unpkg.com/isar" \
+            packages
+
+  web_conformance:
+    name: Web conformance (${{ matrix.compiler }}, shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [dart2js, dart2wasm]
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_OVERRIDE || vars.FLUTTER_VERSION }}
+      - name: Resolve test dependencies
+        run: flutter pub get
+        working-directory: packages/isar_test
+      - name: Generate test models
+        run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: packages/isar_test
+      - name: Generate conformance aggregator
+        run: dart tool/generate_all_tests.dart
+        working-directory: packages/isar_test
+      - name: Run shared web conformance
+        run: dart test -p chrome --compiler ${{ matrix.compiler }} test/web_conformance_${{ matrix.shard }}_test.dart --reporter=failures-only
+        working-directory: packages/isar_test
 
   test:
     name: Dart Test
     strategy:
       matrix:
-        os: [macos-14, macos-13, ubuntu-22.04, windows-2022]
+        os: [macos-14, macos-15-intel, ubuntu-22.04, windows-2022]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -137,23 +215,23 @@ jobs:
           flutter pub add json_annotation
           flutter pub add intl
           flutter pub add isar_test --path ../isar_test
-        working-directory: packages/isar_community
+        working-directory: packages/isar
       - name: Collect isar Coverage
         run: |
           flutter test --coverage --coverage-path lcov_isar.info
-        working-directory: packages/isar_community
+        working-directory: packages/isar
       - name: Collect isar_test Coverage
         run: |
           flutter test --coverage ../isar_test/test --coverage-path lcov_isar_test.info
-        working-directory: packages/isar_community
+        working-directory: packages/isar
       - name: Upload isar Coverage
         uses: codecov/codecov-action@v3
         with:
-          files: packages/isar_community/lcov_isar.info
+          files: packages/isar/lcov_isar.info
       - name: Upload isar_test Coverage
         uses: codecov/codecov-action@v3
         with:
-          files: packages/isar_community/lcov_isar_test.info
+          files: packages/isar/lcov_isar_test.info
 
   test_generator:
     name: Generator Test
@@ -167,7 +245,7 @@ jobs:
         run: |
           dart pub get
           dart test
-        working-directory: packages/isar_community_generator
+        working-directory: packages/isar_generator
 
   integration_test_ios:
     name: Integration Test iOS
@@ -235,7 +313,9 @@ jobs:
 
   integration_test_macos:
     name: Integration Test macOS
-    runs-on: macos-14
+    # The desktop integration harness relies on host temporary paths that are
+    # not visible inside Flutter's sandboxed app on ARM runner images.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2

@@ -1,12 +1,16 @@
 // ignore_for_file: public_member_api_docs
 
 import 'package:isar/isar.dart';
-import 'package:js/js_util.dart';
 import 'package:meta/dart2js.dart';
 
-const nullNumber = double.negativeInfinity;
+T getProperty<T>(Object object, Object key) {
+  return (object as Map<Object, dynamic>)[key] as T;
+}
+
 const idName = '_id';
-final nullDate = DateTime.fromMillisecondsSinceEpoch(0);
+const _nullInt = -2147483648;
+const _nullLong = -9223372036854775808;
+final nullDate = DateTime.fromMicrosecondsSinceEpoch(0);
 
 class IsarReaderImpl implements IsarReader {
   IsarReaderImpl(this.object);
@@ -35,78 +39,78 @@ class IsarReaderImpl implements IsarReader {
   @override
   int readByte(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int ? value : nullNumber as int;
+    return value is int ? value : 0;
   }
 
   @tryInline
   @override
   int? readByteOrNull(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int && value != nullNumber ? value : null;
+    return value is int ? value : null;
   }
 
   @tryInline
   @override
   int readInt(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int ? value : nullNumber as int;
+    return value is int ? value : _nullInt;
   }
 
   @tryInline
   @override
   int? readIntOrNull(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int && value != nullNumber ? value : null;
+    return value is int ? value : null;
   }
 
   @tryInline
   @override
   double readFloat(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is double ? value : nullNumber;
+    return value is num ? value.toDouble() : double.nan;
   }
 
   @tryInline
   @override
   double? readFloatOrNull(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is double && value != nullNumber ? value : null;
+    return value is num ? value.toDouble() : null;
   }
 
   @tryInline
   @override
   int readLong(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int ? value : nullNumber as int;
+    return value is int ? value : Isar.minId;
   }
 
   @tryInline
   @override
   int? readLongOrNull(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int && value != nullNumber ? value : null;
+    return value is int ? value : null;
   }
 
   @tryInline
   @override
   double readDouble(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is double && value != nullNumber ? value : nullNumber;
+    return value is num ? value.toDouble() : double.nan;
   }
 
   @tryInline
   @override
   double? readDoubleOrNull(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is double && value != nullNumber ? value : null;
+    return value is num ? value.toDouble() : null;
   }
 
   @tryInline
   @override
   DateTime readDateTime(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int && value != nullNumber
-        ? DateTime.fromMillisecondsSinceEpoch(value, isUtc: true).toLocal()
+    return value is int
+        ? DateTime.fromMicrosecondsSinceEpoch(value, isUtc: true).toLocal()
         : nullDate;
   }
 
@@ -114,8 +118,8 @@ class IsarReaderImpl implements IsarReader {
   @override
   DateTime? readDateTimeOrNull(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is int && value != nullNumber
-        ? DateTime.fromMillisecondsSinceEpoch(value, isUtc: true).toLocal()
+    return value is int
+        ? DateTime.fromMicrosecondsSinceEpoch(value, isUtc: true).toLocal()
         : null;
   }
 
@@ -177,9 +181,7 @@ class IsarReaderImpl implements IsarReader {
   @override
   List<int>? readByteList(int offset) {
     final value = getProperty<dynamic>(object, offset);
-    return value is List
-        ? value.map((e) => e is int ? e : nullNumber as int).toList()
-        : null;
+    return value is List ? value.map((e) => e is int ? e : 0).toList() : null;
   }
 
   @tryInline
@@ -187,7 +189,7 @@ class IsarReaderImpl implements IsarReader {
   List<int>? readIntList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is int ? e : nullNumber as int).toList()
+        ? value.map((e) => e is int ? e : _nullInt).toList()
         : null;
   }
 
@@ -196,7 +198,7 @@ class IsarReaderImpl implements IsarReader {
   List<int?>? readIntOrNullList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is int && e != nullNumber ? e : null).toList()
+        ? value.map((e) => e is int ? e : null).toList()
         : null;
   }
 
@@ -205,7 +207,7 @@ class IsarReaderImpl implements IsarReader {
   List<double>? readFloatList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is double ? e : nullNumber).toList()
+        ? value.map((e) => e is num ? e.toDouble() : double.nan).toList()
         : null;
   }
 
@@ -214,7 +216,7 @@ class IsarReaderImpl implements IsarReader {
   List<double?>? readFloatOrNullList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is double && e != nullNumber ? e : null).toList()
+        ? value.map((e) => e is num ? e.toDouble() : null).toList()
         : null;
   }
 
@@ -223,7 +225,7 @@ class IsarReaderImpl implements IsarReader {
   List<int>? readLongList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is int ? e : nullNumber as int).toList()
+        ? value.map((e) => e is int ? e : _nullLong).toList()
         : null;
   }
 
@@ -232,7 +234,7 @@ class IsarReaderImpl implements IsarReader {
   List<int?>? readLongOrNullList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is int && e != nullNumber ? e : null).toList()
+        ? value.map((e) => e is int ? e : null).toList()
         : null;
   }
 
@@ -241,7 +243,7 @@ class IsarReaderImpl implements IsarReader {
   List<double>? readDoubleList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is double ? e : nullNumber).toList()
+        ? value.map((e) => e is num ? e.toDouble() : double.nan).toList()
         : null;
   }
 
@@ -250,7 +252,7 @@ class IsarReaderImpl implements IsarReader {
   List<double?>? readDoubleOrNullList(int offset) {
     final value = getProperty<dynamic>(object, offset);
     return value is List
-        ? value.map((e) => e is double && e != nullNumber ? e : null).toList()
+        ? value.map((e) => e is num ? e.toDouble() : null).toList()
         : null;
   }
 
@@ -261,8 +263,8 @@ class IsarReaderImpl implements IsarReader {
     return value is List
         ? value
             .map(
-              (e) => e is int && e != nullNumber
-                  ? DateTime.fromMillisecondsSinceEpoch(e, isUtc: true)
+              (e) => e is int
+                  ? DateTime.fromMicrosecondsSinceEpoch(e, isUtc: true)
                       .toLocal()
                   : nullDate,
             )
@@ -277,8 +279,8 @@ class IsarReaderImpl implements IsarReader {
     return value is List
         ? value
             .map(
-              (e) => e is int && e != nullNumber
-                  ? DateTime.fromMillisecondsSinceEpoch(e, isUtc: true)
+              (e) => e is int
+                  ? DateTime.fromMicrosecondsSinceEpoch(e, isUtc: true)
                       .toLocal()
                   : null,
             )

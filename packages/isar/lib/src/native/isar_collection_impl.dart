@@ -8,6 +8,7 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:isar/isar.dart';
+import 'package:isar/src/common/isar_link_backend.dart';
 import 'package:isar/src/native/bindings.dart';
 import 'package:isar/src/native/encode_string.dart';
 import 'package:isar/src/native/index_key.dart';
@@ -18,7 +19,8 @@ import 'package:isar/src/native/isar_writer_impl.dart';
 import 'package:isar/src/native/query_build.dart';
 import 'package:isar/src/native/txn.dart';
 
-class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
+class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ>
+    implements IsarLinkBackend {
   IsarCollectionImpl({
     required this.isar,
     required this.ptr,
@@ -39,12 +41,7 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
   OBJ deserializeObject(CObject cObj) {
     final buffer = cObj.buffer.asTypedList(cObj.buffer_length);
     final reader = IsarReaderImpl(buffer);
-    final object = schema.deserialize(
-      cObj.id,
-      reader,
-      _offsets,
-      isar.offsets,
-    );
+    final object = schema.deserialize(cObj.id, reader, _offsets, isar.offsets);
     schema.attach(this, cObj.id, object);
     return object;
   }
@@ -138,12 +135,7 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
       final binaryWriter = IsarWriterImpl(objBuffer, _staticSize);
 
       final object = objects[i];
-      schema.serialize(
-        object,
-        binaryWriter,
-        _offsets,
-        isar.offsets,
-      );
+      schema.serialize(object, binaryWriter, _offsets, isar.offsets);
       final size = binaryWriter.usedBytes;
 
       final cObj = (objectsPtr + i).ref;
@@ -259,12 +251,7 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
     final buffer = cObj.buffer.asTypedList(estimatedSize);
 
     final writer = IsarWriterImpl(buffer, _staticSize);
-    schema.serialize(
-      object,
-      writer,
-      _offsets,
-      isar.offsets,
-    );
+    schema.serialize(object, writer, _offsets, isar.offsets);
     cObj.buffer_length = writer.usedBytes;
 
     cObj.id = schema.getId(object);
@@ -445,13 +432,7 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
       bytesPtr.asTypedList(jsonBytes.length).setAll(0, jsonBytes);
       final idNamePtr = schema.idName.toCString(txn.alloc);
 
-      IC.isar_json_import(
-        ptr,
-        txn.ptr,
-        idNamePtr,
-        bytesPtr,
-        jsonBytes.length,
-      );
+      IC.isar_json_import(ptr, txn.ptr, idNamePtr, bytesPtr, jsonBytes.length);
       await txn.wait();
     });
   }
@@ -518,13 +499,7 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
     return isar.getTxnSync(false, (Txn txn) {
       final sizePtr = txn.alloc<Int64>();
       nCall(
-        IC.isar_get_size(
-          ptr,
-          txn.ptr,
-          includeIndexes,
-          includeLinks,
-          sizePtr,
-        ),
+        IC.isar_get_size(ptr, txn.ptr, includeIndexes, includeLinks, sizePtr),
       );
       return sizePtr.value;
     });
@@ -534,8 +509,11 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
   Stream<void> watchLazy({bool fireImmediately = false}) {
     isar.requireOpen();
     final port = ReceivePort();
-    final handle =
-        IC.isar_watch_collection(isar.ptr, ptr, port.sendPort.nativePort);
+    final handle = IC.isar_watch_collection(
+      isar.ptr,
+      ptr,
+      port.sendPort.nativePort,
+    );
     final controller = StreamController<void>(
       onCancel: () {
         IC.isar_stop_watching(handle);
@@ -553,8 +531,10 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
 
   @override
   Stream<OBJ?> watchObject(Id id, {bool fireImmediately = false}) {
-    return watchObjectLazy(id, fireImmediately: fireImmediately)
-        .asyncMap((event) => get(id));
+    return watchObjectLazy(
+      id,
+      fireImmediately: fireImmediately,
+    ).asyncMap((event) => get(id));
   }
 
   @override
@@ -563,8 +543,12 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
     final cObjPtr = malloc<CObject>();
 
     final port = ReceivePort();
-    final handle =
-        IC.isar_watch_object(isar.ptr, ptr, id, port.sendPort.nativePort);
+    final handle = IC.isar_watch_object(
+      isar.ptr,
+      ptr,
+      id,
+      port.sendPort.nativePort,
+    );
     malloc.free(cObjPtr);
 
     final controller = StreamController<void>(
@@ -644,6 +628,91 @@ class IsarCollectionImpl<OBJ> extends IsarCollection<OBJ> {
         sourceIds.length + targetIds.length,
       );
       await txn.wait();
+    });
+  }
+
+  @override
+  Future<void> updateLinkBackend<T>({
+    required IsarCollection<T> targetCollection,
+    required String linkName,
+    required Id sourceId,
+    required Iterable<T> link,
+    required Iterable<T> unlink,
+    required bool reset,
+  }) {
+    final target = targetCollection as IsarCollectionImpl<T>;
+    final linkList = link.toList();
+    final unlinkList = unlink.toList();
+    final getId = target.schema.getId;
+    return isar.getTxn(true, (Txn txn) {
+      final count = linkList.length + unlinkList.length;
+      final idsPtr = txn.alloc<Int64>(count);
+      final ids = idsPtr.asTypedList(count);
+      for (var i = 0; i < linkList.length; i++) {
+        ids[i] = _requireLinkId(getId, linkList[i]);
+      }
+      for (var i = 0; i < unlinkList.length; i++) {
+        ids[linkList.length + i] = _requireLinkId(getId, unlinkList[i]);
+      }
+      IC.isar_link_update_all(
+        ptr,
+        txn.ptr,
+        schema.link(linkName).id,
+        sourceId,
+        idsPtr,
+        linkList.length,
+        unlinkList.length,
+        reset,
+      );
+      return txn.wait();
+    });
+  }
+
+  Id _requireLinkId<T>(Id Function(T) getId, T object) {
+    final id = getId(object);
+    if (id == Isar.autoIncrement) {
+      throw IsarError(
+        'Object "$object" has no id and can therefore not be linked. '
+        'Make sure to .put() objects before you use them in links.',
+      );
+    }
+    return id;
+  }
+
+  @override
+  void updateLinkBackendSync<T>({
+    required IsarCollection<T> targetCollection,
+    required String linkName,
+    required Id sourceId,
+    required Iterable<T> link,
+    required Iterable<T> unlink,
+    required bool reset,
+  }) {
+    final target = targetCollection as IsarCollectionImpl<T>;
+    final linkId = schema.link(linkName).id;
+    final getId = target.schema.getId;
+    isar.getTxnSync(true, (Txn txn) {
+      if (reset) {
+        nCall(IC.isar_link_unlink_all(ptr, txn.ptr, linkId, sourceId));
+      }
+      for (final object in link) {
+        var id = getId(object);
+        if (id == Isar.autoIncrement) {
+          id = target.putByIndexSyncInternal(txn: txn, object: object);
+        }
+        nCall(IC.isar_link(ptr, txn.ptr, linkId, sourceId, id));
+      }
+      for (final object in unlink) {
+        nCall(
+          IC.isar_link_unlink(
+            ptr,
+            txn.ptr,
+            linkId,
+            sourceId,
+            _requireLinkId(getId, object),
+          ),
+        );
+      }
     });
   }
 }

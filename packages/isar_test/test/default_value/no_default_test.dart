@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -89,6 +89,8 @@ class NoDefaultListModel {
 }
 
 void main() {
+  if (skipIfUnsupported(BackendCapability.schemaMigration)) return;
+
   group('No default value', () {
     isarTest('scalar', () async {
       final emptyObj = EmptyModel(0);
@@ -102,7 +104,10 @@ void main() {
       expect(obj.boolValue, false);
       expect(obj.byteValue, 0);
       expect(obj.shortValue, -2147483648);
-      expect(obj.intValue, -9223372036854775808);
+      expect(
+        obj.intValue,
+        testBackend == TestBackend.native ? -9223372036854775808 : Isar.minId,
+      );
       expect(obj.floatValue, isNaN);
       expect(obj.doubleValue, isNaN);
       expect(
@@ -136,7 +141,7 @@ void main() {
       );
       expect(
         await isar2.noDefaultModels.where().intValueProperty().tFindFirst(),
-        -9223372036854775808,
+        testBackend == TestBackend.native ? -9223372036854775808 : Isar.minId,
       );
       expect(
         await isar2.noDefaultModels.where().floatValueProperty().tFindFirst(),

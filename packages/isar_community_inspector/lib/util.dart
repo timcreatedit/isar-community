@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 
 extension CollectionSchemaX on CollectionSchema<dynamic> {
   PropertySchema propertyOrId(String name) {

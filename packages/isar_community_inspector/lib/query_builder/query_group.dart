@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_community_inspector/query_builder/query_filter.dart';
 
 class QueryGroup extends StatelessWidget {
@@ -72,10 +72,8 @@ class QueryGroup extends StatelessWidget {
                             QueryFilter(
                               collection: collection,
                               condition: filter as FilterCondition,
-                              onChanged: (updated) => _performUpdate(
-                                add: updated,
-                                remove: filter,
-                              ),
+                              onChanged: (updated) =>
+                                  _performUpdate(add: updated, remove: filter),
                             ),
                             const SizedBox(width: 5),
                             IconButton(
@@ -114,12 +112,7 @@ class QueryGroup extends StatelessWidget {
     } else if (add != null) {
       newFilters.add(add);
     }
-    onChanged(
-      FilterGroup(
-        type: group.type,
-        filters: newFilters,
-      ),
-    );
+    onChanged(FilterGroup(type: group.type, filters: newFilters));
   }
 }
 
@@ -176,12 +169,7 @@ class _Guideline extends StatelessWidget {
                   : group.type == FilterGroupType.or
                       ? FilterGroupType.xor
                       : FilterGroupType.and;
-              onChanged(
-                FilterGroup(
-                  type: newType,
-                  filters: group.filters,
-                ),
-              );
+              onChanged(FilterGroup(type: newType, filters: group.filters));
             },
             side: BorderSide.none,
             shape: RoundedRectangleBorder(
@@ -228,25 +216,16 @@ class GroupFilterButton extends StatelessWidget {
         ElevatedButton.icon(
           icon: const Icon(Icons.workspaces_rounded),
           label: const Text('Add Group'),
-          style: ButtonStyle(
-            elevation: WidgetStateProperty.all(level + 1),
-          ),
+          style: ButtonStyle(elevation: WidgetStateProperty.all(level + 1)),
           onPressed: () {
-            onAdd(
-              FilterGroup(
-                type: FilterGroupType.and,
-                filters: [],
-              ),
-            );
+            onAdd(FilterGroup(type: FilterGroupType.and, filters: []));
           },
         ),
         const SizedBox(width: 20),
         ElevatedButton.icon(
           icon: const Icon(Icons.filter_alt_rounded),
           label: const Text('Add Filter'),
-          style: ButtonStyle(
-            elevation: WidgetStateProperty.all(level + 1),
-          ),
+          style: ButtonStyle(elevation: WidgetStateProperty.all(level + 1)),
           onPressed: () {
             onAdd(
               FilterCondition.greaterThan(

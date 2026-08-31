@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -223,7 +223,7 @@ void main() {
       */
     });
 
-    isarTestVm('.matches() VM', () async {
+    isarTest('.matches()', () async {
       await qEqualSet(
         isar.stringModels.filter().fieldMatches('*ng 5'),
         [obj5, obj6],
@@ -235,13 +235,6 @@ void main() {
       await qEqualSet(isar.stringModels.filter().fieldMatches(''), [objEmpty]);
 
       await qEqualSet(isar.stringModels.filter().fieldMatches('*4?'), []);
-    });
-
-    isarTestWeb('.matches() WEB', () async {
-      expect(
-        await isar.stringModels.filter().fieldMatches('*ng 5').tFindAll(),
-        anyOf(throwsUnimplementedError, throwsUnsupportedError),
-      );
     });
 
     isarTest('.isEmpty()', () async {

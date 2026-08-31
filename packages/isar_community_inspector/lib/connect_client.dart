@@ -3,12 +3,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:isar_community/isar.dart';
-import 'package:isar_community/src/isar_connect_api.dart';
+import 'package:isar/isar.dart';
+import 'package:isar/src/isar_connect_api.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-export 'package:isar_community/src/isar_connect_api.dart';
+export 'package:isar/src/isar_connect_api.dart';
 
 class ConnectClient {
   ConnectClient(this.vmService, this.isolateId);
@@ -76,9 +76,7 @@ class ConnectClient {
     var responseFuture = vmService.callServiceExtension(
       action.method,
       isolateId: isolateId,
-      args: {
-        if (args != null) 'args': jsonEncode(args),
-      },
+      args: {if (args != null) 'args': jsonEncode(args)},
     );
     if (timeout != null) {
       responseFuture = responseFuture.timeout(timeout);

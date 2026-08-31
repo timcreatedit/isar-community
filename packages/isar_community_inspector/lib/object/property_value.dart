@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 
 class PropertyValue extends StatelessWidget {
   const PropertyValue(
@@ -45,9 +45,7 @@ class PropertyValue extends StatelessWidget {
                   ),
                   items: [
                     if (type != IsarType.byte && type != IsarType.byteList)
-                      const PopupMenuItem<dynamic>(
-                        child: Text('null'),
-                      ),
+                      const PopupMenuItem<dynamic>(child: Text('null')),
                     for (final enumName in enumMap!.keys)
                       PopupMenuItem(
                         value: enumMap![enumName],
@@ -83,17 +81,9 @@ class PropertyValue extends StatelessWidget {
                       0,
                     ),
                     items: const [
-                      PopupMenuItem<bool?>(
-                        child: Text('null'),
-                      ),
-                      PopupMenuItem(
-                        value: true,
-                        child: Text('true'),
-                      ),
-                      PopupMenuItem(
-                        value: false,
-                        child: Text('false'),
-                      ),
+                      PopupMenuItem<bool?>(child: Text('null')),
+                      PopupMenuItem(value: true, child: Text('true')),
+                      PopupMenuItem(value: false, child: Text('false')),
                     ],
                   );
                   onUpdate?.call(newValue);

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_community_inspector/object/property_value.dart';
 import 'package:isar_community_inspector/util.dart';
 
@@ -67,10 +67,7 @@ class QueryFilter extends StatelessWidget {
                 isDense: true,
                 items: [
                   for (final type in property.supportedFilters)
-                    DropdownMenuItem(
-                      value: type,
-                      child: Text(type.niceName),
-                    ),
+                    DropdownMenuItem(value: type, child: Text(type.niceName)),
                 ],
                 value: condition.type,
                 onChanged: (value) {

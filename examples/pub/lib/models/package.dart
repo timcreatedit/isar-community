@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:pub_app/models/api/metrics.dart';
 import 'package:pub_app/models/api/package.dart';
 import 'package:pubspec/pubspec.dart';
@@ -84,8 +84,9 @@ class Package {
           documentation: p.pubspec.documentation,
           description: p.pubspec.description,
           dependencies: Dependency.fromDependencies(p.pubspec.dependencies),
-          devDependencies:
-              Dependency.fromDependencies(p.pubspec.devDependencies),
+          devDependencies: Dependency.fromDependencies(
+            p.pubspec.devDependencies,
+          ),
           published: p.published,
         ),
       );
@@ -130,6 +131,50 @@ class Package {
       ],
     );
   }
+
+  Package copyWith({
+    String? name,
+    String? version,
+    bool? isLatest,
+    String? homepage,
+    String? documentation,
+    String? description,
+    List<Dependency>? dependencies,
+    List<Dependency>? devDependencies,
+    DateTime? published,
+    short? points,
+    short? likes,
+    float? popularity,
+    String? publisher,
+    bool? dart,
+    bool? flutter,
+    bool? flutterFavorite,
+    String? license,
+    bool? osiLicense,
+    List<SupportedPlatform>? platforms,
+  }) {
+    return Package(
+      name: name ?? this.name,
+      version: version ?? this.version,
+      isLatest: isLatest ?? this.isLatest,
+      homepage: homepage ?? this.homepage,
+      documentation: documentation ?? this.documentation,
+      description: description ?? this.description,
+      dependencies: dependencies ?? this.dependencies,
+      devDependencies: devDependencies ?? this.devDependencies,
+      published: published ?? this.published,
+      points: points ?? this.points,
+      likes: likes ?? this.likes,
+      popularity: popularity ?? this.popularity,
+      publisher: publisher ?? this.publisher,
+      dart: dart ?? this.dart,
+      flutter: flutter ?? this.flutter,
+      flutterFavorite: flutterFavorite ?? this.flutterFavorite,
+      license: license ?? this.license,
+      osiLicense: osiLicense ?? this.osiLicense,
+      platforms: platforms ?? this.platforms,
+    );
+  }
 }
 
 @embedded
@@ -148,12 +193,7 @@ class Dependency {
       final dep = dependenciesMap[package]!;
       final constraint =
           dep is HostedReference ? dep.versionConstraint.toString() : 'unknown';
-      dependencies.add(
-        Dependency(
-          name: package,
-          constraint: constraint,
-        ),
-      );
+      dependencies.add(Dependency(name: package, constraint: constraint));
     }
 
     return dependencies;
