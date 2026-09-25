@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -48,6 +48,7 @@ class LinkModelB {
 
   Id? id;
 
+  @Index(unique: true, replace: true)
   late String name;
 
   @Backlink(to: 'otherLink')
@@ -523,6 +524,44 @@ void main() {
         expect(newB3.linkBacklinks, [objA3]);
         expect(newB3.linksBacklinks, {objA1, objA2, objA3});
       });
+    });
+
+    isarTest('async links reject unsaved targets', () async {
+      if (syncTest) return;
+      await isar.tWriteTxn(() => linksA.tPut(objA1));
+      objA1.otherLinks.add(objB1);
+
+      await expectLater(
+        isar.writeTxn(objA1.otherLinks.save),
+        throwsA(isA<IsarError>()),
+      );
+      expect(await linksB.count(), 0);
+    });
+
+    isarTest('forward link changes notify target query watchers', () async {
+      if (testBackend == TestBackend.native) return;
+      await isar.tWriteTxn(() => linksA.tPut(objA1));
+      await isar.tWriteTxn(() => linksB.tPut(objB1));
+      final notified = objA1.otherLinks.filter().watchLazy().first.timeout(
+            const Duration(seconds: 2),
+          );
+
+      objA1.otherLinks.add(objB1);
+      await isar.tWriteTxn(objA1.otherLinks.tSave);
+      await notified;
+    });
+
+    isarTest('unique replacement cleans links to the removed object', () async {
+      await isar.tWriteTxn(() => linksA.tPut(objA1));
+      await isar.tWriteTxn(() => linksB.tPut(objB1));
+      objA1.otherLinks.add(objB1);
+      await isar.tWriteTxn(objA1.otherLinks.tSave);
+
+      final replacement = LinkModelB.name(objB1.name);
+      await isar.tWriteTxn(() => linksB.tPut(replacement));
+      final source = await linksA.tGet(objA1.id!);
+      await source!.otherLinks.tLoad();
+      expect(source.otherLinks, isEmpty);
     });
   });
 }

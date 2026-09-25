@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_community_inspector/object/isar_object.dart';
 import 'package:isar_community_inspector/object/object_view.dart';
 import 'package:isar_community_inspector/object/property_builder.dart';
@@ -22,10 +22,7 @@ class LinkPropertyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (link.single) {
-      final child = object.getNested(
-        link.name,
-        linkCollection: link.target,
-      );
+      final child = object.getNested(link.name, linkCollection: link.target);
       return PropertyBuilder(
         property: link.name,
         type: 'IsarLink<${link.target}>',

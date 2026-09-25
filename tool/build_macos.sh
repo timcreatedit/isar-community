@@ -1,8 +1,14 @@
 #!/bin/bash
 
 
-# Definir a toolchain específica para macOS
-RUST_TOOLCHAIN="1.88.0-x86_64-apple-darwin"
+# Use a host-compatible toolchain. GitHub's macos-14 label may resolve to
+# either Intel or Apple Silicon runners, while both targets are cross-compiled
+# below to produce the universal library.
+case "$(uname -m)" in
+  arm64) RUST_TOOLCHAIN="1.88.0-aarch64-apple-darwin" ;;
+  x86_64) RUST_TOOLCHAIN="1.88.0-x86_64-apple-darwin" ;;
+  *) echo "Unsupported macOS architecture: $(uname -m)" >&2; exit 1 ;;
+esac
 
 # Instalar a toolchain se não existir
 rustup toolchain install $RUST_TOOLCHAIN

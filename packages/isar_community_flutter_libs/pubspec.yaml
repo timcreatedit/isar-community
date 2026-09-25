@@ -16,7 +16,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  isar_community: 3.2.1
+  isar: 3.2.1
 
 flutter:
   plugin:
@@ -34,5 +34,5 @@ flutter:
         pluginClass: IsarFlutterLibsPlugin
 
 dependency_overrides:
-  isar_community:
-    path: ../isar_community
+  isar:
+    path: ../isar

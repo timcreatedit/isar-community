@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -96,7 +96,7 @@ void main() {
       await qEqual(isar.models.filter().doublesLengthEqualTo(6), [obj1]);
       await qEqual(isar.models.filter().doublesLengthEqualTo(42), []);
       await qEqual(
-        isar.models.filter().doublesLengthEqualTo(9223372036854775807),
+        isar.models.filter().doublesLengthEqualTo(Isar.maxId),
         [],
       );
     });

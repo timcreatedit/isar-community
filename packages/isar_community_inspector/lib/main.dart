@@ -1,20 +1,15 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:web/web.dart' as web;
 
 import 'package:isar_community_inspector/connection_screen.dart';
 
 void main() async {
-  if (['chrome', 'firefox'].any((userAgent) =>
-      window.navigator.userAgent.toLowerCase().contains(userAgent))) {
-    runApp(
-      DarkMode(
-        notifier: DarkModeNotifier(),
-        child: const App(),
-      ),
-    );
+  if (['chrome', 'firefox'].any(
+    (userAgent) =>
+        web.window.navigator.userAgent.toLowerCase().contains(userAgent),
+  )) {
+    runApp(DarkMode(notifier: DarkModeNotifier(), child: const App()));
   } else {
     runApp(const UnsupportedBrowser());
   }
@@ -109,11 +104,7 @@ class App extends StatelessWidget {
 }
 
 class DarkMode extends InheritedNotifier<DarkModeNotifier> {
-  const DarkMode({
-    super.key,
-    super.notifier,
-    required super.child,
-  });
+  const DarkMode({super.key, super.notifier, required super.child});
 
   static DarkModeNotifier of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<DarkMode>()!.notifier!;

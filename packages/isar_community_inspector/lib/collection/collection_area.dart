@@ -1,14 +1,13 @@
-// ignore_for_file: type_annotate_public_apis, avoid_web_libraries_in_flutter
+// ignore_for_file: type_annotate_public_apis
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:html';
 import 'dart:math';
 
 import 'package:clickup_fading_scroll/clickup_fading_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_community_inspector/collection/button_prev_next.dart';
 import 'package:isar_community_inspector/collection/button_sort.dart';
 import 'package:isar_community_inspector/collection/objects_list_sliver.dart';
@@ -16,6 +15,7 @@ import 'package:isar_community_inspector/connect_client.dart';
 import 'package:isar_community_inspector/object/isar_object.dart';
 import 'package:isar_community_inspector/query_builder/query_group.dart';
 import 'package:isar_community_inspector/util.dart';
+import 'package:web/web.dart' as web;
 
 const objectsPerPage = 20;
 
@@ -235,21 +235,14 @@ class _CollectionAreaState extends State<CollectionArea> {
   Future<void> _onCreate() async {
     final idName = widget.collectionSchema.idName;
     final randomId = Random().nextInt(100000000);
-    await widget.client.importJson(
-      widget.instance,
-      widget.collection,
-      [
-        {idName: randomId},
-      ],
-    );
+    await widget.client.importJson(widget.instance, widget.collection, [
+      {idName: randomId},
+    ]);
     if (!mounted) return;
 
     setState(() {
       filter = FilterGroup.and([
-        FilterCondition.equalTo(
-          property: idName,
-          value: randomId,
-        ),
+        FilterCondition.equalTo(property: idName, value: randomId),
       ]);
     });
     await _runQuery();
@@ -296,12 +289,12 @@ class _CollectionAreaState extends State<CollectionArea> {
     final data = await widget.client.exportJson(query);
     try {
       final base64 = base64Encode(utf8.encode(jsonEncode(data)));
-      final anchor =
-          AnchorElement(href: 'data:application/octet-stream;base64,$base64')
-            ..target = 'blank'
-            ..download = '${widget.collection}.json';
+      final anchor = web.HTMLAnchorElement()
+        ..href = 'data:application/octet-stream;base64,$base64'
+        ..target = 'blank'
+        ..download = '${widget.collection}.json';
 
-      document.body!.append(anchor);
+      web.document.body!.appendChild(anchor);
       anchor.click();
       anchor.remove();
     } catch (_) {}

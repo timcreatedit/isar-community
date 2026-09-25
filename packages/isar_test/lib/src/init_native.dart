@@ -1,7 +1,7 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:path/path.dart' as path;
 
 Future<void> init() async {

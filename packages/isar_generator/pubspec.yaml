@@ -9,7 +9,7 @@ funding:
   - https://github.com/sponsors/vicenterusso/
 
 environment:
-  sdk: ">=2.17.0 <4.0.0"
+  sdk: ">=3.5.0 <4.0.0"
 
 dependencies:
   # ClickUp patch: widened from ^6.9.0 to allow the analyzer 7.x pinned by

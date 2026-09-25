@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -86,6 +86,8 @@ class NullableListModel {
 }
 
 void main() {
+  if (skipIfUnsupported(BackendCapability.schemaMigration)) return;
+
   group('Nullable value', () {
     isarTest('scalar', () async {
       final emptyObj = EmptyModel(0);

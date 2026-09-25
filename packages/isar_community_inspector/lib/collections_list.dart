@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_community_inspector/connect_client.dart';
 
 class CollectionsList extends StatelessWidget {
@@ -65,16 +65,12 @@ class CollectionsList extends StatelessWidget {
                     children: [
                       Text(
                         info?.count.toString() ?? 'loading',
-                        style: const TextStyle(
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         _formatSize(info?.size ?? 0),
-                        style: const TextStyle(
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ],
                   ),

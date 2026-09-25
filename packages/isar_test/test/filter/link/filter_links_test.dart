@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -294,7 +294,7 @@ void main() {
       );
 
       await qEqualSet(
-        isar.sourceModels.filter().linksLengthLessThan(9223372036854775807),
+        isar.sourceModels.filter().linksLengthLessThan(Isar.maxId),
         [source1, source2, source3, source4, source5, source6],
       );
     });

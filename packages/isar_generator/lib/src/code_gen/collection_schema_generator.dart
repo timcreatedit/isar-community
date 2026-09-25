@@ -4,7 +4,7 @@ import 'package:isar/isar.dart';
 import 'package:isar_generator/src/object_info.dart';
 
 String generateSchema(ObjectInfo object) {
-  var code = 'const ${object.dartName.capitalize()}Schema = ';
+  var code = 'final ${object.dartName.capitalize()}Schema = ';
   if (!object.isEmbedded) {
     code += 'CollectionSchema(';
   } else {
@@ -19,7 +19,7 @@ String generateSchema(ObjectInfo object) {
 
   code += '''
     name: r'${object.isarName}',
-    id: ${object.id},
+    id: ${_generateId(object.id)},
     properties: {$properties},
 
     estimateSize: ${object.estimateSizeName},
@@ -87,7 +87,7 @@ String _generateIndexSchema(ObjectIndex index) {
 
   return '''
     IndexSchema(
-      id: ${index.id},
+      id: ${_generateId(index.id)},
       name: r'${index.name}',
       unique: ${index.unique},
       replace: ${index.replace},
@@ -102,10 +102,16 @@ String _generateLinkSchema(ObjectInfo object, ObjectLink link) {
   }
   return '''
     LinkSchema(
-      id: ${link.id(object.isarName)},
+      id: ${_generateId(link.id(object.isarName))},
       name: r'${link.isarName}',
       target: r'${link.targetCollectionIsarName}',
       single: ${link.isSingle},
       $linkName
     )''';
+}
+
+String _generateId(int id) {
+  const maxWebInteger = 9007199254740991;
+  final webId = id.remainder(maxWebInteger);
+  return "Isar.schemaId('$id', $webId)";
 }

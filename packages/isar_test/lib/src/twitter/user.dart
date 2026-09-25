@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/src/twitter/entities.dart';
 
 part 'user.g.dart';

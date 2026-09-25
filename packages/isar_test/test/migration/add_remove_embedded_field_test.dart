@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -84,6 +84,8 @@ class Embedded2 {
 }
 
 void main() {
+  if (skipIfUnsupported(BackendCapability.schemaMigration)) return;
+
   isarTest('Add field', () async {
     final isar1 = await openTempIsar([Col1Schema]);
     await isar1.tWriteTxn(() {

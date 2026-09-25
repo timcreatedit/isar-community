@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:pub_app/asset_loader.dart';
 import 'package:pub_app/models/asset.dart';
 import 'package:pub_app/models/package.dart';

@@ -1,4 +1,4 @@
-import 'package:isar_community/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:isar_test/isar_test.dart';
 import 'package:test/test.dart';
 
@@ -75,6 +75,8 @@ class DefaultListModel {
 }
 
 void main() {
+  if (skipIfUnsupported(BackendCapability.schemaMigration)) return;
+
   group('Default value', () {
     isarTest('scalar', () async {
       final emptyObj = EmptyModel(0);

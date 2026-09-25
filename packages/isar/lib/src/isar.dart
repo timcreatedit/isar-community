@@ -35,6 +35,12 @@ abstract class Isar {
   /// Placeholder for an auto-increment id.
   static const Id autoIncrement = isarAutoIncrementId;
 
+  /// @nodoc
+  @protected
+  static int schemaId(String nativeId, int webId) {
+    return _kIsWeb ? webId : int.parse(nativeId);
+  }
+
   static final Map<String, Isar> _instances = <String, Isar>{};
   static final Set<IsarOpenCallback> _openCallbacks = <IsarOpenCallback>{};
   static final Set<IsarCloseCallback> _closeCallbacks = <IsarCloseCallback>{};
@@ -87,7 +93,7 @@ abstract class Isar {
   /// Open a new Isar instance.
   static Future<Isar> open(
     List<CollectionSchema<dynamic>> schemas, {
-    required String directory,
+    String? directory,
     String name = defaultName,
     int maxSizeMiB = Isar.defaultMaxSizeMiB,
     bool relaxedDurability = true,
@@ -117,7 +123,7 @@ abstract class Isar {
   /// Open a new Isar instance.
   static Isar openSync(
     List<CollectionSchema<dynamic>> schemas, {
-    required String directory,
+    String? directory,
     String name = defaultName,
     int maxSizeMiB = Isar.defaultMaxSizeMiB,
     bool relaxedDurability = true,
