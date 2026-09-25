@@ -59,28 +59,22 @@ class DartEngineIsar extends IsarCommon {
   @override
   Future<Transaction> beginTxn(bool write, bool silent) async {
     if (!write) {
-      return EngineTransaction(this, false, silent, _copyState(_state));
+      return EngineTransaction(this, false, silent, _state);
     }
     final previous = _writeTail;
     final release = Completer<void>();
     _writeTail = previous.then((_) => release.future);
     await previous;
-    return EngineTransaction(
-      this,
-      true,
-      silent,
-      _copyState(_state),
-      release: release,
-    );
+    return EngineTransaction(this, true, silent, _state, release: release);
   }
 
   @override
   Transaction beginTxnSync(bool write, bool silent) =>
-      EngineTransaction(this, write, silent, _copyState(_state));
+      EngineTransaction(this, write, silent, _state);
 
   void publish(EngineTransaction transaction) {
     if (!transaction.write) return;
-    _state = transaction.state;
+    _state = transaction.commitState();
     if (!transaction.silent) {
       for (final name in transaction.changed) {
         _watchers[name]?.add(null);
@@ -95,7 +89,7 @@ class DartEngineIsar extends IsarCommon {
 
   Future<void> commit(EngineTransaction transaction) async {
     if (!transaction.write) return;
-    await persist?.call(_copyState(transaction.state));
+    await persist?.call(transaction.commitState());
     publish(transaction);
   }
 
@@ -135,14 +129,14 @@ class DartEngineIsar extends IsarCommon {
     final source = _collection(collection);
     final schema = source.schema.link(link);
     if (!schema.isBacklink) {
-      final record = transaction.state[_linkStore(collection, link)]
-              ?[sourceId] ??
-          const {};
+      final record =
+          transaction.readStore(_linkStore(collection, link))?[sourceId] ??
+              const {};
       return record.keys.whereType<Id>().toSet();
     }
     final result = <Id>{};
     final store =
-        transaction.state[_linkStore(schema.target, schema.linkName!)] ??
+        transaction.readStore(_linkStore(schema.target, schema.linkName!)) ??
             const {};
     for (final entry in store.entries) {
       if (entry.value.containsKey(sourceId)) result.add(entry.key);
@@ -162,20 +156,18 @@ class DartEngineIsar extends IsarCommon {
     final source = _collection(collection);
     final schema = source.schema.link(link);
     if (schema.isBacklink) {
-      final store = transaction.state.putIfAbsent(
-        _linkStore(schema.target, schema.linkName!),
-        () => {},
-      );
+      final store =
+          transaction.writeStore(_linkStore(schema.target, schema.linkName!));
       if (reset) {
-        for (final targets in store.values) {
-          targets.remove(sourceId);
+        for (final id in store.keys.toList()) {
+          _removeTarget(store, id, sourceId);
         }
       }
       for (final id in remove) {
-        store[id]?.remove(sourceId);
+        _removeTarget(store, id, sourceId);
       }
       for (final id in add) {
-        store.putIfAbsent(id, () => {})[sourceId] = true;
+        store[id] = {...?store[id], sourceId: true};
       }
       transaction.changed
         ..add(collection)
@@ -185,11 +177,9 @@ class DartEngineIsar extends IsarCommon {
           .add(sourceId);
       return;
     }
-    final store = transaction.state.putIfAbsent(
-      _linkStore(collection, link),
-      () => {},
-    );
-    final targets = store.putIfAbsent(sourceId, () => {});
+    final store = transaction.writeStore(_linkStore(collection, link));
+    // Target sets are shared with earlier snapshots: copy before mutating.
+    final targets = <Object, dynamic>{...?store[sourceId]};
     if (reset) targets.clear();
     for (final id in remove) {
       targets.remove(id);
@@ -198,6 +188,7 @@ class DartEngineIsar extends IsarCommon {
       if (schema.single) targets.clear();
       targets[id] = true;
     }
+    store[sourceId] = targets;
     transaction.changed
       ..add(collection)
       ..add(schema.target);
@@ -209,22 +200,39 @@ class DartEngineIsar extends IsarCommon {
     String collection,
     Id id,
   ) {
-    for (final entry in transaction.state.entries) {
-      if (!entry.key.startsWith('@link:')) continue;
-      final parts = entry.key.split(':');
+    for (final storeName in transaction.storeNames.toList()) {
+      if (!storeName.startsWith('@link:')) continue;
+      final parts = storeName.split(':');
       if (parts.length < 3) continue;
       final sourceCollection = parts[1];
       final linkName = parts.sublist(2).join(':');
-      if (sourceCollection == collection) {
-        entry.value.remove(id);
-      }
       final link = _collection(sourceCollection).schema.link(linkName);
-      if (link.target == collection) {
-        for (final targets in entry.value.values) {
-          targets.remove(id);
+      final current = transaction.readStore(storeName) ?? const {};
+      final removesSource =
+          sourceCollection == collection && current.containsKey(id);
+      final removesTarget = link.target == collection &&
+          current.values.any((targets) => targets.containsKey(id));
+      if (!removesSource && !removesTarget) continue;
+      final store = transaction.writeStore(storeName);
+      if (removesSource) store.remove(id);
+      if (removesTarget) {
+        for (final sourceId in store.keys.toList()) {
+          _removeTarget(store, sourceId, id);
         }
       }
     }
+  }
+
+  /// Drops [targetId] from the target set of [sourceId] in [store], replacing
+  /// the set rather than mutating it so earlier snapshots stay intact.
+  static void _removeTarget(
+    Map<Id, Map<Object, dynamic>> store,
+    Id sourceId,
+    Id targetId,
+  ) {
+    final targets = store[sourceId];
+    if (targets == null || !targets.containsKey(targetId)) return;
+    store[sourceId] = {...targets}..remove(targetId);
   }
 
   @override
@@ -281,21 +289,52 @@ class DartEngineIsar extends IsarCommon {
   }
 }
 
+/// A transaction over a copy-on-write snapshot of the engine state.
+///
+/// Reads see [_base], the state committed when the transaction began. Writes
+/// go to per-store copies in [_overlay], taken on the first write to a store,
+/// so a transaction costs O(stores it touches) instead of O(database). Stores
+/// hold record maps and link maps that are never mutated in place: a record is
+/// always replaced whole, and link target sets are copied before they change
+/// (see [DartEngineIsar.updateLink] and [DartEngineIsar.cleanupLinks]).
+///
+/// [commitState] merges the overlay over the base into a fresh top-level map;
+/// untouched stores keep sharing their maps with the previous state, which is
+/// what lets readers that began earlier keep a consistent snapshot.
 class EngineTransaction extends Transaction {
   EngineTransaction(
     DartEngineIsar isar,
     bool write,
     this.silent,
-    this.state, {
+    this._base, {
     this.release,
   }) : super(isar, true, write);
 
   final bool silent;
-  final EngineState state;
+  final EngineState _base;
+  final EngineState _overlay = {};
   final Completer<void>? release;
   final changed = <String>{};
   final changedObjects = <String, Set<Id>>{};
   bool _active = true;
+
+  /// The store named [name] as of this transaction, or `null` if it does not
+  /// exist. Never mutate the returned map.
+  Map<Id, Map<Object, dynamic>>? readStore(String name) =>
+      _overlay[name] ?? _base[name];
+
+  /// A private, mutable copy of the store named [name], created on first use.
+  Map<Id, Map<Object, dynamic>> writeStore(String name) => _overlay.putIfAbsent(
+        name,
+        () => Map<Id, Map<Object, dynamic>>.of(_base[name] ?? const {}),
+      );
+
+  /// Names of every store visible to this transaction.
+  Iterable<String> get storeNames => {..._base.keys, ..._overlay.keys};
+
+  /// The state this transaction commits: base with the overlay applied.
+  EngineState commitState() =>
+      _overlay.isEmpty ? _base : {..._base, ..._overlay};
 
   @override
   bool get active => _active;
@@ -357,15 +396,21 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
     return object;
   }
 
+  /// This collection's records as of [transaction]. Read-only.
   Map<Id, Map<Object, dynamic>> _records(EngineTransaction transaction) =>
-      transaction.state[name]!;
+      transaction.readStore(name)!;
+
+  /// This collection's records, copied for mutation by [transaction].
+  Map<Id, Map<Object, dynamic>> _writableRecords(
+    EngineTransaction transaction,
+  ) =>
+      transaction.writeStore(name);
 
   int _counter(EngineTransaction transaction) =>
-      transaction.state['@counters']?[schema.id]?[0] as int? ?? 0;
+      transaction.readStore('@counters')?[schema.id]?[0] as int? ?? 0;
 
   void _setCounter(EngineTransaction transaction, int value) {
-    final counters = transaction.state.putIfAbsent('@counters', () => {});
-    counters[schema.id] = {0: value};
+    transaction.writeStore('@counters')[schema.id] = {0: value};
   }
 
   @override
@@ -389,7 +434,7 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
       });
 
   Id _put(EngineTransaction transaction, OBJ object, String? indexName) {
-    final records = _records(transaction);
+    final records = _writableRecords(transaction);
     var id = schema.getId(object);
     if (indexName != null) {
       final existing =
@@ -575,7 +620,7 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
       true, (EngineTransaction transaction) => _deleteIds(transaction, ids));
 
   int _deleteIds(EngineTransaction transaction, Iterable<Id> ids) {
-    final records = _records(transaction);
+    final records = _writableRecords(transaction);
     var count = 0;
     for (final id in ids.toSet()) {
       if (records.remove(id) != null) {
@@ -617,7 +662,7 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
       isar.getTxn(true, (EngineTransaction transaction) async {
         final ids = _records(transaction).keys.toList();
         transaction.changedObjects.putIfAbsent(name, () => {}).addAll(ids);
-        _records(transaction).clear();
+        _writableRecords(transaction).clear();
         for (final id in ids) {
           isar.cleanupLinks(transaction, name, id);
         }
@@ -629,7 +674,7 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
   void clearSync() => isar.getTxnSync(true, (EngineTransaction transaction) {
         final ids = _records(transaction).keys.toList();
         transaction.changedObjects.putIfAbsent(name, () => {}).addAll(ids);
-        _records(transaction).clear();
+        _writableRecords(transaction).clear();
         for (final id in ids) {
           isar.cleanupLinks(transaction, name, id);
         }
@@ -692,7 +737,7 @@ class DartEngineCollection<OBJ> extends IsarCollection<OBJ>
     EngineTransaction transaction,
     List<Map<String, dynamic>> objects,
   ) {
-    final records = _records(transaction);
+    final records = _writableRecords(transaction);
     for (final object in objects) {
       var id = object[schema.idName] as int? ?? Isar.autoIncrement;
       if (id == Isar.autoIncrement) id = _counter(transaction) + 1;
@@ -1499,12 +1544,7 @@ class DartEngineQuery<T, OBJ> extends Query<T> {
         },
       );
 
-  Map<String, dynamic> _json(_Result<T> result) {
-    final data = collection.isar.getTxnSync(
-      false,
-      (EngineTransaction transaction) =>
-          collection._records(transaction)[result.id]!,
-    );
+  Map<String, dynamic> _json(_Result<T> result, Map<Object, dynamic> data) {
     final original = data['@json'];
     if (original is Map) {
       final json = Map<String, dynamic>.from(original);
@@ -1523,13 +1563,16 @@ class DartEngineQuery<T, OBJ> extends Query<T> {
 
   @override
   R exportJsonRawSync<R>(R Function(Uint8List) callback) {
-    final results = collection.isar.getTxnSync(
+    final json = collection.isar.getTxnSync(
       false,
-      (EngineTransaction transaction) => _results(transaction),
+      (EngineTransaction transaction) {
+        final records = collection._records(transaction);
+        return _results(transaction)
+            .map((result) => _json(result, records[result.id]!))
+            .toList();
+      },
     );
-    return callback(
-      Uint8List.fromList(utf8.encode(jsonEncode(results.map(_json).toList()))),
-    );
+    return callback(Uint8List.fromList(utf8.encode(jsonEncode(json))));
   }
 }
 
@@ -1546,14 +1589,6 @@ List<int> _offsets(Schema<dynamic> schema) {
       .reduce((a, b) => a > b ? a : b);
   return List.generate(max + 2, (index) => index);
 }
-
-EngineState _copyState(EngineState state) => {
-      for (final collection in state.entries)
-        collection.key: {
-          for (final object in collection.value.entries)
-            object.key: _deepCopy(object.value) as Map<Object, dynamic>,
-        },
-    };
 
 dynamic _deepCopy(dynamic value) {
   if (value is Map) {
