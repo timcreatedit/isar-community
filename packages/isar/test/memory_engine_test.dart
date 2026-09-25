@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:isar/isar.dart';
 import 'package:isar/isar_memory.dart';
 import 'package:test/test.dart';
@@ -156,5 +158,51 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(events, 1);
     await subscription.cancel();
+  });
+
+  test('an async read keeps its snapshot while a write commits', () async {
+    final isar = await IsarMemory.open([
+      memoryObjectSchema,
+    ], name: 'snapshot-isolation');
+    final objects = isar.collection<MemoryObject>();
+    await isar.writeTxn(() => objects.put(MemoryObject('before')));
+
+    final writeStarted = Completer<void>();
+    final read = isar.txn(() async {
+      final first = await objects.where().count();
+      writeStarted.complete();
+      // Let the concurrent write run to completion before reading again.
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      final second = await objects.where().count();
+      return (first, second);
+    });
+    await writeStarted.future;
+    await isar.writeTxn(() => objects.put(MemoryObject('during')));
+
+    expect(await read, (1, 1));
+    expect(await objects.where().count(), 2);
+  });
+
+  test('transactions cost only the stores they touch', () {
+    final isar = IsarMemory.openSync([memoryObjectSchema]);
+    final objects = isar.collection<MemoryObject>();
+    isar.writeTxnSync(
+      () => objects.putAllSync(
+        List.generate(5000, (i) => MemoryObject('object $i')),
+      ),
+    );
+
+    // Reads share the committed state; exporting or fetching must not scale
+    // with the whole database per operation. Generous bounds: the previous
+    // deep-copy-per-transaction engine took seconds here.
+    final reads = Stopwatch()..start();
+    for (var i = 1; i <= 200; i++) {
+      objects.getSync(i);
+    }
+    expect(reads.elapsedMilliseconds, lessThan(500));
+
+    final export = Stopwatch()..start();
+    expect(objects.where().exportJsonSync(), hasLength(5000));
+    expect(export.elapsedMilliseconds, lessThan(2000));
   });
 }
